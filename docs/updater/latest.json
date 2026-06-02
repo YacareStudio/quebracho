@@ -1,0 +1,23 @@
+{
+  "version": "0.0.1-alpha1",
+  "notes": "Novedades de la version 0.0.1-alpha1.",
+  "pub_date": "2026-06-01T18:24:26.022Z",
+  "platforms": {
+    "windows-x86_64": {
+      "signature": "REPLACE_WITH_WINDOWS_SIGNATURE",
+      "url": "https://example.com/quebracho/v0.0.1-alpha1/Quebracho_0.0.1-alpha1_x64_en-US.msi.zip"
+    },
+    "darwin-aarch64": {
+      "signature": "REPLACE_WITH_MAC_ARM_SIGNATURE",
+      "url": "https://example.com/quebracho/v0.0.1-alpha1/Quebracho.app.tar.gz"
+    },
+    "darwin-x86_64": {
+      "signature": "REPLACE_WITH_MAC_INTEL_SIGNATURE",
+      "url": "https://example.com/quebracho/v0.0.1-alpha1/Quebracho.app.tar.gz"
+    },
+    "linux-x86_64": {
+      "signature": "REPLACE_WITH_LINUX_SIGNATURE",
+      "url": "https://example.com/quebracho/v0.0.1-alpha1/quebracho_0.0.1-alpha1_amd64.AppImage.tar.gz"
+    }
+  }
+}
