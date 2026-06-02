@@ -24,7 +24,7 @@ jobs:
           - platform: "ubuntu-22.04"
             args: "--bundles appimage,deb,rpm"
           - platform: "macos-latest"
-            args: "--bundles dmg"
+            args: "--bundles app,dmg"
     runs-on: ${{ matrix.platform }}
     env:
       RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.release_tag || github.ref_name }}
