@@ -15,7 +15,7 @@
     "format:check": "cargo fmt --manifest-path src-tauri/Cargo.toml --all -- --check",
     "lint": "npm run typecheck && npm run lint:rust",
     "test": "cargo test --manifest-path src-tauri/Cargo.toml",
-    "ci:check": "npm run format:check && npm run lint && npm run test && npm run build:web",
+    "ci:check": "npm run build:web && npm run format:check && npm run lint && npm run test",
     "updater:keygen": "tauri signer generate",
     "updater:latest:init": "node scripts/create-latest-template.mjs"
   },
