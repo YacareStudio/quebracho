@@ -1,13 +1,14 @@
 {
   "name": "quebracho",
-  "version": "0.0.1-alpha2",
+  "version": "0.0.1-alpha3",
   "description": "Quebracho — agentic code editor by Yacare Studio (Chaco, Argentina)",
   "type": "module",
   "scripts": {
     "tauri": "tauri",
     "dev": "tauri dev",
     "dev:web": "vite",
-    "build": "tauri build",
+    "build": "tauri build --bundles nsis",
+    "build:all": "tauri build",
     "build:web": "vite build",
     "typecheck": "tsc --noEmit",
     "lint:rust": "cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets",

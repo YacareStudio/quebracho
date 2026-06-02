@@ -1,6 +1,6 @@
 [package]
 name = "quebracho"
-version = "0.0.1-alpha2"
+version = "0.0.1-alpha3"
 description = "Quebracho desktop app by Yacare Studio"
 authors = ["you"]
 license = ""

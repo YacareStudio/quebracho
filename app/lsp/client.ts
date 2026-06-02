@@ -180,7 +180,7 @@ function convertCompletionItem(
     documentation,
     insertText: te?.newText ?? insertText,
     insertTextRules: isSnippet
-      ? monaco.languages.CompletionItemInsertTextRules.InsertAsSnippet
+      ? monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet
       : undefined,
     sortText: item.sortText,
     filterText: item.filterText,

@@ -295,10 +295,11 @@ export interface ForgeAPI {
     /** Starts a static HTTP server rooted at the directory of the given
      *  HTML file. If a server is already running it is stopped first. */
     start: (htmlPath: string) => Promise<{
-      port: number;
-      root: string;
-      url: string;
-      htmlFile: string;
+      active: boolean;
+      port: number | null;
+      root: string | null;
+      url: string | null;
+      htmlFile: string | null;
     }>;
     /** Stops the live server (no-op if not running). */
     stop: () => Promise<boolean>;

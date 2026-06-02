@@ -539,5 +539,8 @@ export function t(language: UILanguage, key: string, vars?: Record<string, strin
   const fallback = getByPath(translations.es, key) ?? key;
   const template = primary ?? fallback;
   if (!vars) return template;
-  return Object.entries(vars).reduce((acc, [k, v]) => acc.replaceAll(`{${k}}`, String(v)), template);
+  return Object.entries(vars).reduce(
+    (acc, [k, v]) => acc.replace(new RegExp(`\\{${k}\\}`, 'g'), String(v)),
+    template,
+  );
 }

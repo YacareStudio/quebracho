@@ -2646,7 +2646,7 @@ dependencies = [
 
 [[package]]
 name = "quebracho"
-version = "0.0.1-alpha1"
+version = "0.0.1-alpha3"
 dependencies = [
  "base64 0.22.1",
  "mime_guess",
