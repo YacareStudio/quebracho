@@ -16,7 +16,7 @@ const manifest = {
   platforms: {
     'windows-x86_64': {
       signature: 'REPLACE_WITH_WINDOWS_SIGNATURE',
-      url: `https://example.com/quebracho/v${version}/Quebracho_${version}_x64_en-US.msi.zip`
+      url: `https://example.com/quebracho/v${version}/Quebracho_${version}_x64-setup.nsis.zip`
     },
     'darwin-aarch64': {
       signature: 'REPLACE_WITH_MAC_ARM_SIGNATURE',

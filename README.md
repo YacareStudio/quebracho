@@ -12,6 +12,7 @@ Proyecto de Yacare Studio (Chaco, Argentina).
 - [Instalación](#instalación)
 - [Desarrollo](#desarrollo)
 - [Build de producción](#build-de-producción)
+- [Contribuir](#contribuir)
 - [Estructura del proyecto](#estructura-del-proyecto)
 - [Configuración y datos locales](#configuración-y-datos-locales)
 - [Actualizaciones automáticas (updater)](#actualizaciones-automáticas-updater)
@@ -239,6 +240,26 @@ npm run build:web
 ```
 
 Salida en `dist/`.
+
+## Contribuir
+
+Para colaborar de forma consistente en este proyecto open source:
+
+1. Crear issue (bug o feature) usando plantilla.
+2. Esperar aprobación de maintainers (`status:approved`).
+3. Implementar en rama corta y enfocada.
+4. Abrir PR enlazando el issue (`Closes #N`).
+
+Documentación de contribución:
+
+- [CONTRIBUTING.md](CONTRIBUTING.md)
+- [docs/contributing/agentic-workflow.md](docs/contributing/agentic-workflow.md)
+
+Validación local mínima antes de PR:
+
+```bash
+npm run ci:check
+```
 
 ## Estructura del proyecto
 

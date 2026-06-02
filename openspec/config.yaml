@@ -1,0 +1,67 @@
+schema: spec-driven
+project: quebracho
+
+artifact_ref:
+  key: sdd-init/quebracho
+  path: openspec/config.yaml
+
+context: |
+  Stack: React 18 + TypeScript + Vite 5 frontend, Tauri 2 + Rust 2021 backend.
+  Architecture: Desktop shell split into app/ (UI state/components) and src-tauri/ (native commands/services).
+  Conventions: npm scripts for dev/build, strict TypeScript, Tailwind + PostCSS, GitHub Actions release pipeline.
+  Testing: No JS test framework configured; Rust test runner available via Cargo.
+  Quality: Type-checking is available; linter/formatter scripts are not explicitly configured.
+
+strict_tdd: true
+
+testing:
+  detected_at: "2026-06-02"
+  test_runner:
+    available: true
+    framework: cargo test (Rust built-in test harness)
+    command: cargo test --manifest-path src-tauri/Cargo.toml
+  test_layers:
+    unit:
+      available: true
+      tool: cargo test
+    integration:
+      available: false
+      tool: "—"
+    e2e:
+      available: false
+      tool: "—"
+  coverage:
+    available: false
+    command: ""
+  quality:
+    linter:
+      available: false
+      command: ""
+    type_checker:
+      available: true
+      command: npx tsc --noEmit
+    formatter:
+      available: false
+      command: ""
+  test_commands:
+    - cargo test --manifest-path src-tauri/Cargo.toml
+
+rules:
+  proposal:
+    - Include scope boundaries and rollback plan when touching runtime process management.
+  specs:
+    - Use RFC 2119 keywords (MUST/SHOULD/MAY).
+    - Express scenarios with Given/When/Then.
+  design:
+    - Document cross-layer contracts between app/ and src-tauri/.
+  tasks:
+    - Keep tasks reviewable and under the 400-line budget per PR slice.
+  apply:
+    tdd: true
+    test_command: cargo test --manifest-path src-tauri/Cargo.toml
+  verify:
+    test_command: cargo test --manifest-path src-tauri/Cargo.toml
+    build_command: npm run build
+    coverage_threshold: 0
+  archive:
+    - Warn before merging destructive deltas.

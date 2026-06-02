@@ -1,0 +1,6 @@
+artifacts:
+  sdd-init/quebracho:
+    path: openspec/config.yaml
+    type: init
+    backend: openspec
+    updated_at: "2026-06-02"

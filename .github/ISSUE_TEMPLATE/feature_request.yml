@@ -1,0 +1,58 @@
+name: Feature request
+description: Propose an improvement or new capability for Quebracho
+title: "feat(scope): short feature summary"
+labels: ["enhancement", "status:needs-review"]
+body:
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Pre-flight checks
+      options:
+        - label: I searched existing issues and this is not a duplicate
+          required: true
+        - label: I understand this issue needs status:approved before a PR can be opened
+          required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem description
+      description: What pain point are you trying to solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Describe expected behavior and UX
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Affected area
+      options:
+        - Frontend (React)
+        - Native backend (Tauri/Rust)
+        - AI integration
+        - LSP
+        - Filesystem watcher
+        - Release/Updater
+        - Documentation
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Optional
+  - type: textarea
+    id: success
+    attributes:
+      label: Acceptance criteria
+      description: Define verifiable conditions for completion
+      placeholder: |
+        - [ ] Condition 1
+        - [ ] Condition 2
+    validations:
+      required: true
