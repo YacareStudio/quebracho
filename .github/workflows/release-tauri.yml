@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: "Tag del release a publicar, por ejemplo v0.0.1-alpha2"
+        description: "Tag del release a publicar, por ejemplo v0.0.1-alpha3"
         required: true
-        default: "v0.0.1-alpha2"
+        default: "v0.0.1-alpha3"
   push:
     tags:
       - "v*"
