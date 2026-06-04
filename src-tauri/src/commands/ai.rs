@@ -314,8 +314,40 @@ pub fn ai_set_provider_base_url(provider: String, url: String) -> Result<bool, S
     if trimmed.is_empty() {
         return Err("URL cannot be empty".into());
     }
+    if !(trimmed.starts_with("http://") || trimmed.starts_with("https://")) {
+        return Err("URL must start with http:// or https://".into());
+    }
+    if trimmed.len() > 2048 {
+        return Err("URL too long".into());
+    }
     registry.set_base_url(trimmed.to_string());
     Ok(true)
+}
+
+#[cfg(test)]
+mod url_validation_tests {
+    use super::*;
+    #[test]
+    fn rejects_javascript_scheme() {
+        let r = ai_set_provider_base_url("ollama".into(), "javascript:alert(1)".into());
+        assert!(r.is_err());
+        assert!(r.unwrap_err().contains("http"));
+    }
+    #[test]
+    fn rejects_file_scheme() {
+        let r = ai_set_provider_base_url("ollama".into(), "file:///etc/passwd".into());
+        assert!(r.is_err());
+    }
+    #[test]
+    fn rejects_empty() {
+        let r = ai_set_provider_base_url("ollama".into(), "   ".into());
+        assert!(r.is_err());
+    }
+    #[test]
+    fn rejects_unknown_provider() {
+        let r = ai_set_provider_base_url("nope".into(), "http://localhost:1234".into());
+        assert!(r.is_err());
+    }
 }
 
 #[tauri::command]
