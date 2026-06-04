@@ -69,14 +69,14 @@ export default function ImageViewer({ fileName, dataUrl, fileSize }: ImageViewer
     'repeating-conic-gradient(rgba(255,255,255,0.025) 0% 25%, transparent 0% 50%) 50% / 20px 20px';
 
   return (
-    <div className="w-full h-full flex flex-col bg-forge-editor select-none">
+    <div className="w-full h-full flex flex-col bg-quebracho-editor select-none">
       {/* Image surface */}
       <div
         className="flex-1 flex items-center justify-center overflow-auto p-6"
         style={{ background: `#2D2F38 ${checkerboard}` }}
       >
         {errored ? (
-          <div className="flex flex-col items-center gap-2 text-forge-text/60">
+          <div className="flex flex-col items-center gap-2 text-quebracho-text/60">
             <ImageIcon size={48} className="opacity-50" />
             <p className="text-sm">No se puede mostrar la imagen.</p>
             <p className="text-xs opacity-70">{fileName}</p>
@@ -104,11 +104,11 @@ export default function ImageViewer({ fileName, dataUrl, fileSize }: ImageViewer
 
       {/* Info bar */}
       <div
-        className="h-[28px] flex items-center px-3 gap-3 text-[12px] border-t border-forge-border/40 flex-shrink-0"
+        className="h-[28px] flex items-center px-3 gap-3 text-[12px] border-t border-quebracho-border/40 flex-shrink-0"
         style={{ backgroundColor: '#27272F', color: '#A1A3AF' }}
       >
-        <span className="flex items-center gap-1.5 text-forge-text">
-          <ImageIcon size={12} className="text-forge-accent" />
+        <span className="flex items-center gap-1.5 text-quebracho-text">
+          <ImageIcon size={12} className="text-quebracho-accent" />
           <span className="truncate max-w-[260px]" title={fileName}>
             {fileName}
           </span>
@@ -116,7 +116,7 @@ export default function ImageViewer({ fileName, dataUrl, fileSize }: ImageViewer
 
         {dimensions && !errored && (
           <>
-            <span className="text-forge-text/40">·</span>
+            <span className="text-quebracho-text/40">·</span>
             <span>
               {dimensions.width} × {dimensions.height} px
             </span>
@@ -125,7 +125,7 @@ export default function ImageViewer({ fileName, dataUrl, fileSize }: ImageViewer
 
         {fileSize !== undefined && (
           <>
-            <span className="text-forge-text/40">·</span>
+            <span className="text-quebracho-text/40">·</span>
             <span>{formatBytes(fileSize)}</span>
           </>
         )}

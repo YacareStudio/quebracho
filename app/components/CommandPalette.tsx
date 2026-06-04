@@ -71,14 +71,14 @@ export default function CommandPalette() {
       onClick={close}
     >
       <div
-        className="w-[600px] max-h-[400px] bg-forge-sidebar border border-forge-border rounded-md shadow-2xl overflow-hidden flex flex-col"
+        className="w-[600px] max-h-[400px] bg-quebracho-sidebar border border-quebracho-border rounded-md shadow-2xl overflow-hidden flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="p-2 border-b border-forge-border/50">
+        <div className="p-2 border-b border-quebracho-border/50">
           <input
             ref={inputRef}
             type="text"
-            className="w-full bg-forge-input text-forge-text text-[14px] px-3 py-1.5 rounded outline-none border border-forge-accent/50 focus:border-forge-accent"
+            className="w-full bg-quebracho-input text-quebracho-text text-[14px] px-3 py-1.5 rounded outline-none border border-quebracho-accent/50 focus:border-quebracho-accent"
             placeholder={t(uiLanguage, 'commandPalette.placeholder')}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -88,7 +88,7 @@ export default function CommandPalette() {
 
         <div className="flex-1 overflow-y-auto sidebar-scroll">
           {filtered.length === 0 ? (
-            <div className="px-4 py-6 text-center text-forge-text/60 text-sm">
+            <div className="px-4 py-6 text-center text-quebracho-text/60 text-sm">
               {t(uiLanguage, 'commandPalette.noMatches')}
             </div>
           ) : (
@@ -98,13 +98,13 @@ export default function CommandPalette() {
                 onClick={() => cmd.action()}
                 className={`flex items-center justify-between px-4 py-2 cursor-pointer text-[13px] transition-colors
                   ${idx === selectedIndex
-                    ? 'bg-forge-accent/15 text-forge-accent'
-                    : 'text-forge-text hover:bg-white/5'}
+                    ? 'bg-quebracho-accent/15 text-quebracho-accent'
+                    : 'text-quebracho-text hover:bg-white/5'}
                 `}
               >
                 <span>{cmd.label}</span>
                 {cmd.shortcut && (
-                  <span className="text-forge-text/50 text-[12px] ml-4 flex-shrink-0">
+                  <span className="text-quebracho-text/50 text-[12px] ml-4 flex-shrink-0">
                     {cmd.shortcut}
                   </span>
                 )}

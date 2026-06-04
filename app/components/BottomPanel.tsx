@@ -75,7 +75,7 @@ function XTermView({ visible }: { visible: boolean }) {
     } catch (err) {
       // Never let a fit error escape — it would crash the React tree.
       // eslint-disable-next-line no-console
-      console.debug('[forge] xterm fit skipped:', (err as Error)?.message);
+      console.debug('[quebracho] xterm fit skipped:', (err as Error)?.message);
     }
   };
 
@@ -207,7 +207,7 @@ function XTermView({ visible }: { visible: boolean }) {
         debouncedFit();
       } catch (err) {
         // eslint-disable-next-line no-console
-        console.debug('[forge] ResizeObserver fit error:', (err as Error)?.message);
+        console.debug('[quebracho] ResizeObserver fit error:', (err as Error)?.message);
       }
     });
     observer.observe(containerRef.current);
@@ -227,7 +227,7 @@ function XTermView({ visible }: { visible: boolean }) {
         }
       } catch (err) {
         // eslint-disable-next-line no-console
-        console.debug('[forge] clipboard paste failed:', (err as Error)?.message);
+        console.debug('[quebracho] clipboard paste failed:', (err as Error)?.message);
       }
     };
 
@@ -337,11 +337,11 @@ export default function BottomPanel() {
 
   return (
     <div
-      className="flex-shrink-0 border-t border-forge-border/50 bg-forge-terminal flex flex-col"
+      className="flex-shrink-0 border-t border-quebracho-border/50 bg-quebracho-terminal flex flex-col"
       style={{ height: `${bottomPanelHeight}px` }}
     >
       {/* Tab Header */}
-      <div className="h-[32px] flex items-center justify-between px-2 bg-forge-titlebar border-b border-forge-border/40 select-none">
+      <div className="h-[32px] flex items-center justify-between px-2 bg-quebracho-titlebar border-b border-quebracho-border/40 select-none">
         <div className="flex items-center gap-0">
           {tabs.map((tab) => {
             const isActive = tab.id === activeBottomTab;
@@ -351,8 +351,8 @@ export default function BottomPanel() {
                 onClick={() => setBottomTab(tab.id)}
                 className={`flex items-center gap-1.5 px-3 h-[32px] text-[11px] uppercase tracking-wider border-b-2 transition-colors
                   ${isActive
-                    ? 'text-forge-text-strong border-forge-accent'
-                    : 'text-forge-text border-transparent hover:text-forge-text-strong'}
+                    ? 'text-quebracho-text-strong border-quebracho-accent'
+                    : 'text-quebracho-text border-transparent hover:text-quebracho-text-strong'}
                 `}
               >
                 {tab.icon}
@@ -364,10 +364,10 @@ export default function BottomPanel() {
 
         <button
           onClick={togglePanel}
-          className="w-6 h-6 flex items-center justify-center hover:bg-forge-hover rounded"
+          className="w-6 h-6 flex items-center justify-center hover:bg-quebracho-hover rounded"
           title={t(uiLanguage, 'bottomPanel.closePanel')}
         >
-          <X size={15} className="text-forge-text" />
+          <X size={15} className="text-quebracho-text" />
         </button>
       </div>
 
@@ -383,17 +383,17 @@ export default function BottomPanel() {
         </div>
 
         {activeBottomTab === 'problems' && (
-          <div className="p-3 font-mono text-[13px] text-forge-text">
+          <div className="p-3 font-mono text-[13px] text-quebracho-text">
             {t(uiLanguage, 'bottomPanel.noProblems')}
           </div>
         )}
         {activeBottomTab === 'output' && (
-          <div className="p-3 font-mono text-[13px] text-forge-text">
+          <div className="p-3 font-mono text-[13px] text-quebracho-text">
             {t(uiLanguage, 'bottomPanel.outputEmpty')}
           </div>
         )}
         {activeBottomTab === 'debug' && (
-          <div className="p-3 font-mono text-[13px] text-forge-text">
+          <div className="p-3 font-mono text-[13px] text-quebracho-text">
             {t(uiLanguage, 'bottomPanel.debugReady')}
           </div>
         )}

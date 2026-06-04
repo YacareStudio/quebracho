@@ -68,6 +68,8 @@ pub struct AiConfig {
     pub active_provider: Option<String>,
     #[serde(rename = "activeModel")]
     pub active_model: Option<String>,
+    #[serde(rename = "keyringStatus")]
+    pub keyring_status: Option<String>,
 }
 
 #[derive(Serialize)]

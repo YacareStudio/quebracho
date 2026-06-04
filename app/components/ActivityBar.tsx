@@ -30,7 +30,7 @@ export default function ActivityBar() {
   };
 
   return (
-    <div className="h-[40px] w-full bg-forge-activitybar flex items-center justify-between px-2 border-b border-forge-border/50 select-none">
+    <div className="h-[40px] w-full bg-quebracho-activitybar flex items-center justify-between px-2 border-b border-quebracho-border/50 select-none">
       {/* Left: panel icons (horizontal) */}
       <div className="flex items-center h-full">
         {items.map((item) => {
@@ -42,14 +42,14 @@ export default function ActivityBar() {
               title={t(uiLanguage, item.title)}
               className={`relative h-full px-4 flex items-center justify-center transition-colors
                 ${isActive
-                  ? 'text-forge-text-strong'
-                  : 'text-forge-text hover:text-forge-text-strong'}
+                  ? 'text-quebracho-text-strong'
+                  : 'text-quebracho-text hover:text-quebracho-text-strong'}
               `}
             >
               {item.icon}
               {/* Active bottom border accent */}
               {isActive && (
-                <span className="absolute left-2 right-2 bottom-0 h-[2px] bg-forge-accent rounded-t" />
+                <span className="absolute left-2 right-2 bottom-0 h-[2px] bg-quebracho-accent rounded-t" />
               )}
             </button>
           );
@@ -63,26 +63,26 @@ export default function ActivityBar() {
           title={t(uiLanguage, 'activity.aiAgent')}
           className={`relative h-full px-3 flex items-center justify-center transition-colors
             ${aiPanelVisible
-              ? 'text-forge-text-strong'
-              : 'text-forge-text hover:text-forge-text-strong'}
+              ? 'text-quebracho-text-strong'
+              : 'text-quebracho-text hover:text-quebracho-text-strong'}
           `}
         >
           <Sparkles size={18} />
           {aiPanelVisible && (
-            <span className="absolute left-2 right-2 bottom-0 h-[2px] bg-forge-accent rounded-t" />
+            <span className="absolute left-2 right-2 bottom-0 h-[2px] bg-quebracho-accent rounded-t" />
           )}
         </button>
         <button
           onClick={handleAccountClick}
           title={t(uiLanguage, 'activity.account')}
-          className="h-full px-3 flex items-center justify-center text-forge-text hover:text-forge-text-strong transition-colors"
+          className="h-full px-3 flex items-center justify-center text-quebracho-text hover:text-quebracho-text-strong transition-colors"
         >
           <UserCircle size={18} />
         </button>
         <button
           onClick={() => setSettingsModalOpen(true)}
           title={t(uiLanguage, 'activity.settings')}
-          className="h-full px-3 flex items-center justify-center text-forge-text hover:text-forge-text-strong transition-colors"
+          className="h-full px-3 flex items-center justify-center text-quebracho-text hover:text-quebracho-text-strong transition-colors"
         >
           <Settings size={18} />
         </button>

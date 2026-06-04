@@ -124,14 +124,14 @@ export default function InputArea() {
   };
 
   return (
-    <div className="border-t border-forge-border bg-forge-sidebar">
+    <div className="border-t border-quebracho-border bg-quebracho-sidebar">
       {/* Textarea row */}
       <div className="px-2 pt-2 pb-1 flex gap-2 items-end relative">
         <div className="relative">
           <button
             onClick={() => setMenuOpen((v) => !v)}
             title={t(uiLanguage, 'aiPanel.commandsMenu')}
-            className="h-7 w-7 rounded flex items-center justify-center text-forge-text hover:text-forge-text-strong hover:bg-white/5"
+            className="h-7 w-7 rounded flex items-center justify-center text-quebracho-text hover:text-quebracho-text-strong hover:bg-white/5"
           >
             <Slash size={14} />
           </button>
@@ -144,12 +144,12 @@ export default function InputArea() {
                 <button
                   key={c.name}
                   onClick={() => handleCommand(c.name)}
-                  className="block w-full text-left px-3 py-2 hover:bg-forge-accent/15 hover:text-forge-accent transition-colors"
+                  className="block w-full text-left px-3 py-2 hover:bg-quebracho-accent/15 hover:text-quebracho-accent transition-colors"
                 >
-                  <div className="text-[13px] text-forge-text-menu font-medium">
+                  <div className="text-[13px] text-quebracho-text-menu font-medium">
                     {c.name}
                   </div>
-                  <div className="text-[11px] text-forge-text-dim leading-snug mt-0.5">
+                  <div className="text-[11px] text-quebracho-text-dim leading-snug mt-0.5">
                     {t(uiLanguage, c.descriptionKey)}
                   </div>
                 </button>
@@ -165,7 +165,7 @@ export default function InputArea() {
           onKeyDown={handleKey}
           placeholder={placeholder}
           rows={1}
-          className="flex-1 resize-none px-3 py-2 rounded text-[13px] bg-forge-input text-forge-text outline-none border border-forge-border focus:border-forge-accent leading-snug"
+          className="flex-1 resize-none px-3 py-2 rounded text-[13px] bg-quebracho-input text-quebracho-text outline-none border border-quebracho-border focus:border-quebracho-accent leading-snug"
           style={{ maxHeight: 140 }}
         />
 
@@ -173,7 +173,7 @@ export default function InputArea() {
           <button
             onClick={handleStop}
             title={t(uiLanguage, 'aiPanel.stop')}
-            className="h-7 w-7 rounded flex items-center justify-center bg-forge-input border border-forge-border text-forge-text hover:text-forge-text-strong"
+            className="h-7 w-7 rounded flex items-center justify-center bg-quebracho-input border border-quebracho-border text-quebracho-text hover:text-quebracho-text-strong"
           >
             <Square size={12} />
           </button>
@@ -184,8 +184,8 @@ export default function InputArea() {
             title={t(uiLanguage, 'aiPanel.send')}
             className={`h-7 w-7 rounded flex items-center justify-center transition-colors
               ${disabled || text.trim().length === 0
-                ? 'bg-forge-input text-forge-text-dim cursor-not-allowed'
-                : 'bg-forge-accent text-black hover:opacity-90'}
+                ? 'bg-quebracho-input text-quebracho-text-dim cursor-not-allowed'
+                : 'bg-quebracho-accent text-black hover:opacity-90'}
             `}
           >
             <Send size={14} />
@@ -194,8 +194,8 @@ export default function InputArea() {
       </div>
 
       {/* Bottom: context bar */}
-      <div className="px-3 py-1.5 border-t border-forge-border/60 flex items-center justify-between text-[11px]">
-        <div className="flex items-center gap-1.5 min-w-0 text-forge-text-dim">
+      <div className="px-3 py-1.5 border-t border-quebracho-border/60 flex items-center justify-between text-[11px]">
+        <div className="flex items-center gap-1.5 min-w-0 text-quebracho-text-dim">
           {contextKind === 'file' ? (
             <FileIcon size={11} />
           ) : contextKind === 'directory' ? (
@@ -203,26 +203,26 @@ export default function InputArea() {
           ) : (
             <FolderOpen size={11} />
           )}
-          <span className="text-forge-text-dim flex-shrink-0">{t(uiLanguage, 'aiPanel.context')}</span>
-          <span className="text-forge-text truncate" title={selectedPath || workspacePath || ''}>
+          <span className="text-quebracho-text-dim flex-shrink-0">{t(uiLanguage, 'aiPanel.context')}</span>
+          <span className="text-quebracho-text truncate" title={selectedPath || workspacePath || ''}>
             {contextLabel}
           </span>
           {contextKind === 'root' && workspacePath && (
-            <span className="text-forge-text-dim flex-shrink-0">{t(uiLanguage, 'aiPanel.projectRoot')}</span>
+            <span className="text-quebracho-text-dim flex-shrink-0">{t(uiLanguage, 'aiPanel.projectRoot')}</span>
           )}
         </div>
         {!noProvider && workspacePath && initDone && (
-          <span className="text-forge-text-dim flex-shrink-0">
+          <span className="text-quebracho-text-dim flex-shrink-0">
             {busy ? t(uiLanguage, 'aiPanel.working') : t(uiLanguage, 'aiPanel.ready')}
           </span>
         )}
         {!initDone && workspacePath && !noProvider && (
-          <span className="text-forge-accent flex-shrink-0">{t(uiLanguage, 'aiPanel.initRequired')}</span>
+          <span className="text-quebracho-accent flex-shrink-0">{t(uiLanguage, 'aiPanel.initRequired')}</span>
         )}
         {noProvider && (
           <button
             onClick={() => setApiKeyModalOpen(true)}
-            className="text-forge-accent hover:underline flex-shrink-0"
+            className="text-quebracho-accent hover:underline flex-shrink-0"
           >
             {t(uiLanguage, 'aiPanel.configureApi')}
           </button>

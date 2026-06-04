@@ -57,14 +57,14 @@ export default function DiffView() {
       style={{ background: 'rgba(0,0,0,0.6)' }}
     >
       <div
-        className="w-[min(880px,92vw)] h-[min(640px,80vh)] bg-forge-sidebar border border-forge-border rounded-md shadow-2xl flex flex-col"
+        className="w-[min(880px,92vw)] h-[min(640px,80vh)] bg-quebracho-sidebar border border-quebracho-border rounded-md shadow-2xl flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-forge-border">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-quebracho-border">
           <div className="flex items-center gap-2 min-w-0">
-            <GitCompare size={16} className="text-forge-accent flex-shrink-0" />
-            <h2 className="text-forge-text-strong text-sm font-medium truncate">
+            <GitCompare size={16} className="text-quebracho-accent flex-shrink-0" />
+            <h2 className="text-quebracho-text-strong text-sm font-medium truncate">
               {t(uiLanguage, 'aiPanel.diffProposedChanges', { path: pendingDiff.relPath })}
             </h2>
             <span className="text-[11px] text-green-400 ml-2 flex-shrink-0">
@@ -76,7 +76,7 @@ export default function DiffView() {
           </div>
           <button
             onClick={handleReject}
-            className="text-forge-text hover:text-forge-text-strong"
+            className="text-quebracho-text hover:text-quebracho-text-strong"
             title={t(uiLanguage, 'aiPanel.reject')}
           >
             <X size={16} />
@@ -140,16 +140,16 @@ export default function DiffView() {
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-2 px-4 py-3 border-t border-forge-border">
+        <div className="flex items-center justify-end gap-2 px-4 py-3 border-t border-quebracho-border">
           <button
             onClick={handleReject}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded text-[12px] text-forge-text hover:text-forge-text-strong border border-forge-border hover:border-forge-text/40"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded text-[12px] text-quebracho-text hover:text-quebracho-text-strong border border-quebracho-border hover:border-quebracho-text/40"
           >
             <X size={14} /> {t(uiLanguage, 'aiPanel.reject')}
           </button>
           <button
             onClick={handleAccept}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded text-[12px] font-medium bg-forge-accent text-black hover:opacity-90"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded text-[12px] font-medium bg-quebracho-accent text-black hover:opacity-90"
           >
             <Check size={14} /> {t(uiLanguage, 'aiPanel.acceptChanges')}
           </button>

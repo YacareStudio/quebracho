@@ -355,6 +355,7 @@ const bridge: ForgeAPI = {
     removeApiKey: (provider) => invoke('ai_remove_api_key', { provider }),
     setActive: (provider, model) => invoke('ai_set_active', { provider, model }),
     listModels: (provider) => invoke('ai_list_models', { provider }),
+    setProviderBaseUrl: (id, url) => invoke('ai_set_provider_base_url', { provider: id, url }),
     chatStream: (args) => invoke('ai_chat_stream', { args }),
     abortStream: (streamId) => invoke('ai_abort_stream', { streamId }),
     onStream: (streamId, callback) => {
@@ -370,7 +371,7 @@ const bridge: ForgeAPI = {
     },
   },
 
-  forge: {
+  quebracho: {
     readHistory: (workspacePath) => invoke('forge_read_history', { workspacePath }),
     writeHistory: (workspacePath, messages) => invoke('forge_write_history', { workspacePath, messages }),
     ensureForgeDir: (workspacePath) => invoke('forge_ensure_forge_dir', { workspacePath }),

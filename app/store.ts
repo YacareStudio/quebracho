@@ -97,8 +97,12 @@ interface EditorState {
   aiActiveModel: string | null;
   /** Model lists by provider, populated lazily after key entry. */
   aiAvailableModels: Partial<Record<ProviderId, string[]>>;
+  /** Loading status per provider: idle | loading | success | error. */
+  aiModelLoadStatus: Partial<Record<ProviderId, 'idle' | 'loading' | 'success' | 'error'>>;
   /** Whether the model dropdown is open. */
   aiModelMenuOpen: boolean;
+  /** Keyring storage status: 'os' = system keychain, 'local' = JSON file. */
+  aiKeyringStatus: 'os' | 'local' | null;
   /** Whether /init has produced a PROJECT.md for the current workspace. */
   aiInitDone: boolean;
   /** Conversation messages. */
@@ -118,6 +122,7 @@ interface EditorState {
   setAIApiKeyModalOpen: (open: boolean) => void;
   refreshAIConfig: () => Promise<void>;
   setAIAvailableModels: (provider: ProviderId, models: string[]) => void;
+  setAIModelLoadStatus: (provider: ProviderId, status: 'idle' | 'loading' | 'success' | 'error') => void;
   setAIActive: (provider: ProviderId, model: string) => Promise<void>;
   /** Remove an API key for a provider. If it was the active one, clear it. */
   removeAIProvider: (provider: ProviderId) => Promise<void>;
@@ -132,12 +137,12 @@ interface EditorState {
     diff: PendingDiff | null,
     resolver?: ((accepted: boolean) => void) | null,
   ) => void;
-  /** Load conversation history from `.forge/history.json` of the current
+  /** Load conversation history from `.quebracho/history.json` of the current
    *  workspace (or the provided one). Replaces `aiMessages` and updates
    *  `aiInitDone` based on whether the file exists. */
   loadProjectHistory: (workspacePath: string) => Promise<void>;
   /** Best-effort persist the in-memory `aiMessages` array to
-   *  `.forge/history.json`. Only writes when `.forge/` already exists. */
+   *  `.quebracho/history.json`. Only writes when `.quebracho/` already exists. */
   saveProjectHistory: () => Promise<void>;
   /** Replace `aiMessages` with the loaded array (no IPC). */
   setAIMessages: (messages: AIMessage[]) => void;
@@ -289,7 +294,9 @@ export const useStore = create<EditorState>((set, get) => ({
   aiActiveProvider: null,
   aiActiveModel: null,
   aiAvailableModels: {},
+  aiModelLoadStatus: {},
   aiModelMenuOpen: false,
+  aiKeyringStatus: null,
   aiInitDone: false,
   aiMessages: [],
   aiStatus: 'idle',
@@ -316,14 +323,20 @@ export const useStore = create<EditorState>((set, get) => ({
         aiConfiguredProviders: cfg.configuredProviders,
         aiActiveProvider: cfg.activeProvider,
         aiActiveModel: cfg.activeModel,
+        aiKeyringStatus: cfg.keyringStatus ?? null,
       });
     } catch (err) {
-      console.warn('[forge] refreshAIConfig failed:', (err as Error)?.message);
+      console.warn('[quebracho] refreshAIConfig failed:', (err as Error)?.message);
     }
   },
   setAIAvailableModels: (provider, models) => {
     set((state) => ({
       aiAvailableModels: { ...state.aiAvailableModels, [provider]: models },
+    }));
+  },
+  setAIModelLoadStatus: (provider, status) => {
+    set((state) => ({
+      aiModelLoadStatus: { ...state.aiModelLoadStatus, [provider]: status },
     }));
   },
   setAIActive: async (provider, model) => {
@@ -335,9 +348,9 @@ export const useStore = create<EditorState>((set, get) => ({
     set({ aiActiveProvider: provider, aiActiveModel: model });
     try {
       await window.forgeAPI.ai.setActive(provider, model);
-      console.debug('[forge] setAIActive persisted:', provider, model);
+      console.debug('[quebracho] setAIActive persisted:', provider, model);
     } catch (err) {
-      console.warn('[forge] setAIActive persist failed:', (err as Error)?.message);
+      console.warn('[quebracho] setAIActive persist failed:', (err as Error)?.message);
     }
   },
   /** Removes a provider's API key. If that provider was active, clears the
@@ -346,7 +359,7 @@ export const useStore = create<EditorState>((set, get) => ({
     try {
       await window.forgeAPI.ai.removeApiKey(provider);
     } catch (err) {
-      console.warn('[forge] removeAIProvider failed:', (err as Error)?.message);
+      console.warn('[quebracho] removeAIProvider failed:', (err as Error)?.message);
     }
     set((state) => {
       const wasActive = state.aiActiveProvider === provider;
@@ -403,15 +416,15 @@ export const useStore = create<EditorState>((set, get) => ({
   },
   setAIMessages: (messages) => set({ aiMessages: messages }),
 
-  /** Load `.forge/history.json` from disk for the given workspace.
+  /** Load `.quebracho/history.json` from disk for the given workspace.
    *  Replaces aiMessages and toggles `aiInitDone` based on file existence. */
   loadProjectHistory: async (workspacePath) => {
-    if (!workspacePath || !window.forgeAPI?.forge) {
+    if (!workspacePath || !window.forgeAPI?.quebracho) {
       set({ aiMessages: [], aiInitDone: false });
       return;
     }
     try {
-      const history = await window.forgeAPI.forge.readHistory(workspacePath);
+      const history = await window.forgeAPI.quebracho.readHistory(workspacePath);
       if (history === null) {
         // history.json does not exist → /init has not been run yet.
         set({
@@ -441,21 +454,21 @@ export const useStore = create<EditorState>((set, get) => ({
         aiPendingDiffResolver: null,
       });
     } catch (err) {
-      console.warn('[forge] loadProjectHistory failed:', (err as Error)?.message);
+      console.warn('[quebracho] loadProjectHistory failed:', (err as Error)?.message);
       set({ aiMessages: [], aiInitDone: false });
     }
   },
 
   saveProjectHistory: async () => {
     const { workspacePath, aiMessages, aiInitDone } = get();
-    if (!workspacePath || !window.forgeAPI?.forge) return;
+    if (!workspacePath || !window.forgeAPI?.quebracho) return;
     // Don't write history for projects that haven't been /init-ed yet, to
-    // avoid creating `.forge/` implicitly when the user is just exploring.
+    // avoid creating `.quebracho/` implicitly when the user is just exploring.
     if (!aiInitDone) return;
     try {
-      await window.forgeAPI.forge.writeHistory(workspacePath, aiMessages);
+      await window.forgeAPI.quebracho.writeHistory(workspacePath, aiMessages);
     } catch (err) {
-      console.debug('[forge] saveProjectHistory failed:', (err as Error)?.message);
+      console.debug('[quebracho] saveProjectHistory failed:', (err as Error)?.message);
     }
   },
 
@@ -546,7 +559,7 @@ export const useStore = create<EditorState>((set, get) => ({
   agentStreamFinalizeTab: async (fullPath) => {
     const tab = get().openTabs.find((t) => t.id === fullPath || t.path === fullPath);
     if (!tab) {
-      console.warn('[forge] agentStreamFinalizeTab: no tab matches', fullPath);
+      console.warn('[quebracho] agentStreamFinalizeTab: no tab matches', fullPath);
       // Still clear the streaming flag for this path so a future open of
       // the file isn't blocked by stale state.
       set((state) => {
@@ -590,7 +603,7 @@ export const useStore = create<EditorState>((set, get) => ({
       // Surface the failure loudly — silent failures here are the reason
       // streamed files used to appear in tabs but never land on disk.
       const msg = (err as Error)?.message || String(err);
-      console.error('[forge] agentStreamFinalizeTab failed:', tab.path, msg);
+      console.error('[quebracho] agentStreamFinalizeTab failed:', tab.path, msg);
       // Always clear the streaming flag, even on failure, so the editor
       // returns to normal interactive editing.
       set((state) => {
@@ -652,7 +665,7 @@ export const useStore = create<EditorState>((set, get) => ({
         await get().saveProjectHistory();
       } catch (err) {
         console.debug(
-          '[forge] saveProjectHistory before switch failed:',
+          '[quebracho] saveProjectHistory before switch failed:',
           (err as Error)?.message,
         );
       }
@@ -698,19 +711,19 @@ export const useStore = create<EditorState>((set, get) => ({
         await lspClient.startWorkspace(resolvedFolderPath);
       } catch (err) {
         console.debug(
-          '[forge] LSP start skipped:',
+          '[quebracho] LSP start skipped:',
           (err as Error)?.message
         );
       }
 
-      // Load per-project conversation history from `.forge/history.json`.
+      // Load per-project conversation history from `.quebracho/history.json`.
       // If the file is missing, `aiInitDone` stays false (the panel will
       // prompt the user to run `/init`).
       try {
         await get().loadProjectHistory(resolvedFolderPath);
       } catch (err) {
         console.debug(
-          '[forge] loadProjectHistory in openFolder failed:',
+          '[quebracho] loadProjectHistory in openFolder failed:',
           (err as Error)?.message,
         );
       }
@@ -722,7 +735,7 @@ export const useStore = create<EditorState>((set, get) => ({
       try {
         get().sendCdToActiveTerminal(resolvedFolderPath);
       } catch (err) {
-        console.debug('[forge] cd-to-workspace skipped:', (err as Error)?.message);
+        console.debug('[quebracho] cd-to-workspace skipped:', (err as Error)?.message);
       }
     } catch (err) {
       console.error('Failed to open folder:', err);
@@ -1107,7 +1120,7 @@ export const useStore = create<EditorState>((set, get) => ({
     try {
       window.forgeAPI.terminalWrite(activeTerminalId, command);
     } catch (err) {
-      console.debug('[forge] terminalWrite (cd) failed:', (err as Error)?.message);
+      console.debug('[quebracho] terminalWrite (cd) failed:', (err as Error)?.message);
     }
   },
 
@@ -1173,7 +1186,7 @@ export const useStore = create<EditorState>((set, get) => ({
     try {
       await window.forgeAPI.settings.setLanguage(normalized);
     } catch (err) {
-      console.warn('[forge] setUILanguage persist failed:', (err as Error)?.message);
+      console.warn('[quebracho] setUILanguage persist failed:', (err as Error)?.message);
     }
   },
 
@@ -1183,7 +1196,7 @@ export const useStore = create<EditorState>((set, get) => ({
     try {
       await window.forgeAPI.settings.setTerminalShell(normalized === 'auto' ? null : normalized);
     } catch (err) {
-      console.warn('[forge] setTerminalShellPreference persist failed:', (err as Error)?.message);
+      console.warn('[quebracho] setTerminalShellPreference persist failed:', (err as Error)?.message);
     }
   },
 
@@ -1193,7 +1206,7 @@ export const useStore = create<EditorState>((set, get) => ({
     try {
       await window.forgeAPI.settings.setColorTheme(normalized);
     } catch (err) {
-      console.warn('[forge] setColorTheme persist failed:', (err as Error)?.message);
+      console.warn('[quebracho] setColorTheme persist failed:', (err as Error)?.message);
     }
   },
 
@@ -1203,7 +1216,7 @@ export const useStore = create<EditorState>((set, get) => ({
     try {
       await window.forgeAPI.settings.setFileIconTheme(normalized);
     } catch (err) {
-      console.warn('[forge] setFileIconTheme persist failed:', (err as Error)?.message);
+      console.warn('[quebracho] setFileIconTheme persist failed:', (err as Error)?.message);
     }
   },
 
@@ -1275,7 +1288,7 @@ export const useStore = create<EditorState>((set, get) => ({
       }
     }
     if (!target) {
-      console.warn('[forge] toggleLiveServer called without an HTML file.');
+      console.warn('[quebracho] toggleLiveServer called without an HTML file.');
       return;
     }
     await get().startLiveServer(target);
@@ -1293,7 +1306,7 @@ export const useStore = create<EditorState>((set, get) => ({
       });
     } catch (err) {
       console.debug(
-        '[forge] refreshLiveServerStatus failed:',
+        '[quebracho] refreshLiveServerStatus failed:',
         (err as Error)?.message,
       );
     }

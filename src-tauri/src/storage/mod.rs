@@ -28,10 +28,38 @@ impl PrefsStore for JsonPrefsStore {
 }
 
 pub mod secrets;
+pub mod keyring;
 pub mod migration;
 
 pub use secrets::{SecretsStore, JsonSecretsStore};
+pub use keyring::KeyringSecretsStore;
 pub use migration::migrate_old_config;
+
+use std::sync::Arc;
+
+pub fn build_secrets_store(fallback_path: std::path::PathBuf) -> Arc<dyn SecretsStore> {
+    match std::env::var("QUEBRACHO_FORCE_JSON_SECRETS") {
+        Ok(v) if v == "1" || v == "true" => {
+            eprintln!("[quebracho] QUEBRACHO_FORCE_JSON_SECRETS set; using JSON secrets file");
+            return Arc::new(JsonSecretsStore::new(fallback_path));
+        }
+        _ => {}
+    }
+
+    match KeyringSecretsStore::new() {
+        Ok(s) => {
+            eprintln!("[quebracho] Using OS keychain for secrets");
+            Arc::new(s)
+        }
+        Err(e) => {
+            eprintln!("[quebracho] OS keychain unavailable ({e}), falling back to JSON secrets file");
+            if let Some(parent) = fallback_path.parent() {
+                let _ = std::fs::create_dir_all(parent);
+            }
+            Arc::new(JsonSecretsStore::new(fallback_path))
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {

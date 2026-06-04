@@ -19,8 +19,8 @@ impl Provider for OpenRouterProvider {
         Some("Unified access to many models")
     }
 
-    fn base_url(&self) -> &str {
-        "https://openrouter.ai/api/v1"
+    fn base_url(&self) -> String {
+        "https://openrouter.ai/api/v1".to_string()
     }
 
     fn requires_auth_for_list(&self) -> bool {
