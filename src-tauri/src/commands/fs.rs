@@ -1,8 +1,9 @@
 use crate::models::{FsChangeEvent, TreeNode};
 use crate::state::WorkspaceState;
+use crate::storage::{JsonPrefsStore, PrefsStore};
 use crate::utils::{
-    app_config_path, load_app_config, normalize_lexical, normalize_path,
-    resolve_user_path_in_workspace, save_app_config,
+    normalize_lexical, normalize_path,
+    resolve_user_path_in_workspace,
 };
 use notify::{Event, RecursiveMode, Watcher};
 use std::fs;
@@ -235,38 +236,20 @@ pub fn unwatch_workspace(state: State<'_, Mutex<WorkspaceState>>) -> Result<bool
 
 #[tauri::command]
 pub fn remember_workspace(
-    app: AppHandle,
-    state: State<'_, Mutex<WorkspaceState>>,
+    prefs: State<'_, JsonPrefsStore>,
     workspace_path: String,
 ) -> Result<bool, String> {
-    let config_path = {
-        let mut s = state.lock().map_err(|_| "workspace state lock failed")?;
-        if s.config_path.is_none() {
-            s.config_path = Some(app_config_path(&app)?);
-        }
-        s.config_path.clone().ok_or("missing config path")?
-    };
-
-    let mut cfg = load_app_config(&config_path);
+    let mut cfg = prefs.load()?;
     cfg.last_workspace = Some(workspace_path);
-    save_app_config(&config_path, &cfg)?;
+    prefs.save(&cfg)?;
     Ok(true)
 }
 
 #[tauri::command]
 pub fn get_last_workspace(
-    app: AppHandle,
-    state: State<'_, Mutex<WorkspaceState>>,
+    prefs: State<'_, JsonPrefsStore>,
 ) -> Result<Option<String>, String> {
-    let config_path = {
-        let mut s = state.lock().map_err(|_| "workspace state lock failed")?;
-        if s.config_path.is_none() {
-            s.config_path = Some(app_config_path(&app)?);
-        }
-        s.config_path.clone().ok_or("missing config path")?
-    };
-
-    let cfg = load_app_config(&config_path);
+    let cfg = prefs.load()?;
     Ok(cfg.last_workspace)
 }
 

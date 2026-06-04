@@ -9,6 +9,7 @@ use quebracho_lib::commands::lsp::*;
 use quebracho_lib::commands::settings::*;
 use quebracho_lib::commands::terminal::*;
 use quebracho_lib::state::{AiState, LiveServerState, LspState, TerminalState, WorkspaceState};
+use quebracho_lib::storage::{JsonPrefsStore, JsonSecretsStore, migrate_old_config};
 use quebracho_lib::utils::app_config_path;
 use std::sync::Mutex;
 use tauri::Manager;
@@ -79,10 +80,27 @@ fn main() {
             agent_read_file_safe
         ])
         .setup(|app| {
-            let cfg = app_config_path(app.handle())?;
+            let config_path = app_config_path(app.handle())?;
+            let secrets_path = config_path.with_file_name("quebracho-secrets.json");
+
+            // Initialize secrets store first so migration can write into it
+            let secrets = JsonSecretsStore::new(secrets_path.clone());
+
+            // Run one-time migration: move ai_keys from config to secrets store
+            let _ = migrate_old_config(&config_path, &secrets);
+
+            // Initialize prefs store
+            let prefs = JsonPrefsStore::new(config_path.clone());
+
+            // Set config path in workspace state for backward compat
             let state = app.state::<Mutex<WorkspaceState>>();
             let mut s = state.lock().map_err(|_| "workspace state lock failed")?;
-            s.config_path = Some(cfg);
+            s.config_path = Some(config_path);
+
+            // Manage both stores as Tauri state
+            app.manage(prefs);
+            app.manage(secrets);
+
             Ok(())
         })
         .run(tauri::generate_context!())

@@ -2,22 +2,22 @@ use crate::models::AppConfig;
 use crate::utils::{load_app_config, save_app_config};
 use std::path::PathBuf;
 
-pub trait SettingsStore: Send + Sync {
+pub trait PrefsStore: Send + Sync {
     fn load(&self) -> Result<AppConfig, String>;
     fn save(&self, cfg: &AppConfig) -> Result<(), String>;
 }
 
-pub struct JsonSettingsStore {
+pub struct JsonPrefsStore {
     path: PathBuf,
 }
 
-impl JsonSettingsStore {
+impl JsonPrefsStore {
     pub fn new(path: PathBuf) -> Self {
         Self { path }
     }
 }
 
-impl SettingsStore for JsonSettingsStore {
+impl PrefsStore for JsonPrefsStore {
     fn load(&self) -> Result<AppConfig, String> {
         Ok(load_app_config(&self.path))
     }
@@ -27,15 +27,20 @@ impl SettingsStore for JsonSettingsStore {
     }
 }
 
+pub mod secrets;
+pub mod migration;
+
+pub use secrets::{SecretsStore, JsonSecretsStore};
+pub use migration::migrate_old_config;
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::collections::HashMap;
 
     #[test]
-    fn test_json_settings_store_round_trip() {
-        let tmp = std::env::temp_dir().join("quebracho-test-settings-store.json");
-        let store = JsonSettingsStore::new(tmp.clone());
+    fn test_json_prefs_store_round_trip() {
+        let tmp = std::env::temp_dir().join("quebracho-test-prefs-store.json");
+        let store = JsonPrefsStore::new(tmp.clone());
 
         let cfg = AppConfig {
             ui_language: Some("es".into()),
@@ -44,11 +49,6 @@ mod tests {
             file_icon_theme: Some("material".into()),
             active_provider: Some("openai".into()),
             active_model: Some("gpt-4o".into()),
-            ai_keys: {
-                let mut m = HashMap::new();
-                m.insert("test".into(), "sk-test".into());
-                m
-            },
             ..Default::default()
         };
 
@@ -61,7 +61,6 @@ mod tests {
         assert_eq!(loaded.file_icon_theme, Some("material".into()));
         assert_eq!(loaded.active_provider, Some("openai".into()));
         assert_eq!(loaded.active_model, Some("gpt-4o".into()));
-        assert_eq!(loaded.ai_keys.get("test"), Some(&"sk-test".into()));
 
         let _ = std::fs::remove_file(&tmp);
     }

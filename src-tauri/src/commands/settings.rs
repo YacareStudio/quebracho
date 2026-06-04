@@ -1,77 +1,39 @@
-use crate::state::WorkspaceState;
-use crate::utils::{app_config_path, load_app_config, save_app_config};
-use std::sync::Mutex;
-use tauri::{AppHandle, State};
+use crate::storage::{JsonPrefsStore, PrefsStore};
+use tauri::State;
 
 #[tauri::command]
 pub fn ui_get_language(
-    app: AppHandle,
-    state: State<'_, Mutex<WorkspaceState>>,
+    prefs: State<'_, JsonPrefsStore>,
 ) -> Result<Option<String>, String> {
-    let config_path = {
-        let mut s = state.lock().map_err(|_| "workspace state lock failed")?;
-        if s.config_path.is_none() {
-            s.config_path = Some(app_config_path(&app)?);
-        }
-        s.config_path.clone().ok_or("missing config path")?
-    };
-
-    let cfg = load_app_config(&config_path);
+    let cfg = prefs.load()?;
     Ok(cfg.ui_language)
 }
 
 #[tauri::command]
 pub fn ui_set_language(
-    app: AppHandle,
-    state: State<'_, Mutex<WorkspaceState>>,
+    prefs: State<'_, JsonPrefsStore>,
     language: String,
 ) -> Result<bool, String> {
-    let config_path = {
-        let mut s = state.lock().map_err(|_| "workspace state lock failed")?;
-        if s.config_path.is_none() {
-            s.config_path = Some(app_config_path(&app)?);
-        }
-        s.config_path.clone().ok_or("missing config path")?
-    };
-
-    let mut cfg = load_app_config(&config_path);
+    let mut cfg = prefs.load()?;
     cfg.ui_language = Some(language);
-    save_app_config(&config_path, &cfg)?;
+    prefs.save(&cfg)?;
     Ok(true)
 }
 
 #[tauri::command]
 pub fn ui_get_terminal_shell(
-    app: AppHandle,
-    state: State<'_, Mutex<WorkspaceState>>,
+    prefs: State<'_, JsonPrefsStore>,
 ) -> Result<Option<String>, String> {
-    let config_path = {
-        let mut s = state.lock().map_err(|_| "workspace state lock failed")?;
-        if s.config_path.is_none() {
-            s.config_path = Some(app_config_path(&app)?);
-        }
-        s.config_path.clone().ok_or("missing config path")?
-    };
-
-    let cfg = load_app_config(&config_path);
+    let cfg = prefs.load()?;
     Ok(cfg.terminal_shell)
 }
 
 #[tauri::command]
 pub fn ui_set_terminal_shell(
-    app: AppHandle,
-    state: State<'_, Mutex<WorkspaceState>>,
+    prefs: State<'_, JsonPrefsStore>,
     shell: Option<String>,
 ) -> Result<bool, String> {
-    let config_path = {
-        let mut s = state.lock().map_err(|_| "workspace state lock failed")?;
-        if s.config_path.is_none() {
-            s.config_path = Some(app_config_path(&app)?);
-        }
-        s.config_path.clone().ok_or("missing config path")?
-    };
-
-    let mut cfg = load_app_config(&config_path);
+    let mut cfg = prefs.load()?;
     cfg.terminal_shell = shell.and_then(|raw| {
         let trimmed = raw.trim();
         if trimmed.is_empty() {
@@ -80,42 +42,24 @@ pub fn ui_set_terminal_shell(
             Some(trimmed.to_string())
         }
     });
-    save_app_config(&config_path, &cfg)?;
+    prefs.save(&cfg)?;
     Ok(true)
 }
 
 #[tauri::command]
 pub fn ui_get_color_theme(
-    app: AppHandle,
-    state: State<'_, Mutex<WorkspaceState>>,
+    prefs: State<'_, JsonPrefsStore>,
 ) -> Result<Option<String>, String> {
-    let config_path = {
-        let mut s = state.lock().map_err(|_| "workspace state lock failed")?;
-        if s.config_path.is_none() {
-            s.config_path = Some(app_config_path(&app)?);
-        }
-        s.config_path.clone().ok_or("missing config path")?
-    };
-
-    let cfg = load_app_config(&config_path);
+    let cfg = prefs.load()?;
     Ok(cfg.color_theme)
 }
 
 #[tauri::command]
 pub fn ui_set_color_theme(
-    app: AppHandle,
-    state: State<'_, Mutex<WorkspaceState>>,
+    prefs: State<'_, JsonPrefsStore>,
     theme: Option<String>,
 ) -> Result<bool, String> {
-    let config_path = {
-        let mut s = state.lock().map_err(|_| "workspace state lock failed")?;
-        if s.config_path.is_none() {
-            s.config_path = Some(app_config_path(&app)?);
-        }
-        s.config_path.clone().ok_or("missing config path")?
-    };
-
-    let mut cfg = load_app_config(&config_path);
+    let mut cfg = prefs.load()?;
     cfg.color_theme = theme.and_then(|raw| {
         let trimmed = raw.trim();
         if trimmed.is_empty() {
@@ -124,42 +68,24 @@ pub fn ui_set_color_theme(
             Some(trimmed.to_string())
         }
     });
-    save_app_config(&config_path, &cfg)?;
+    prefs.save(&cfg)?;
     Ok(true)
 }
 
 #[tauri::command]
 pub fn ui_get_file_icon_theme(
-    app: AppHandle,
-    state: State<'_, Mutex<WorkspaceState>>,
+    prefs: State<'_, JsonPrefsStore>,
 ) -> Result<Option<String>, String> {
-    let config_path = {
-        let mut s = state.lock().map_err(|_| "workspace state lock failed")?;
-        if s.config_path.is_none() {
-            s.config_path = Some(app_config_path(&app)?);
-        }
-        s.config_path.clone().ok_or("missing config path")?
-    };
-
-    let cfg = load_app_config(&config_path);
+    let cfg = prefs.load()?;
     Ok(cfg.file_icon_theme)
 }
 
 #[tauri::command]
 pub fn ui_set_file_icon_theme(
-    app: AppHandle,
-    state: State<'_, Mutex<WorkspaceState>>,
+    prefs: State<'_, JsonPrefsStore>,
     theme: Option<String>,
 ) -> Result<bool, String> {
-    let config_path = {
-        let mut s = state.lock().map_err(|_| "workspace state lock failed")?;
-        if s.config_path.is_none() {
-            s.config_path = Some(app_config_path(&app)?);
-        }
-        s.config_path.clone().ok_or("missing config path")?
-    };
-
-    let mut cfg = load_app_config(&config_path);
+    let mut cfg = prefs.load()?;
     cfg.file_icon_theme = theme.and_then(|raw| {
         let trimmed = raw.trim();
         if trimmed.is_empty() {
@@ -168,6 +94,6 @@ pub fn ui_set_file_icon_theme(
             Some(trimmed.to_string())
         }
     });
-    save_app_config(&config_path, &cfg)?;
+    prefs.save(&cfg)?;
     Ok(true)
 }

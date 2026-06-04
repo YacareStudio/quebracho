@@ -21,8 +21,6 @@ pub struct AppConfig {
     pub color_theme: Option<String>,
     #[serde(rename = "fileIconTheme", default)]
     pub file_icon_theme: Option<String>,
-    #[serde(rename = "aiKeys", default)]
-    pub ai_keys: std::collections::HashMap<String, String>,
     #[serde(rename = "activeProvider", default)]
     pub active_provider: Option<String>,
     #[serde(rename = "activeModel", default)]

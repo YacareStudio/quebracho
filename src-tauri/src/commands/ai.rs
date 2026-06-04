@@ -1,7 +1,8 @@
 use crate::models::{AiChatArgs, AiConfig, ChatMessage, ProviderInfo};
 use crate::providers::{default_registry, ProviderRegistry};
-use crate::state::{AiState, WorkspaceState};
-use crate::utils::{app_config_path, load_app_config, normalize_api_key, save_app_config};
+use crate::state::AiState;
+use crate::storage::{JsonPrefsStore, JsonSecretsStore, PrefsStore, SecretsStore};
+use crate::utils::normalize_api_key;
 use crate::HTTP_CLIENT;
 use once_cell::sync::Lazy;
 use serde_json::{json, Value};
@@ -22,6 +23,8 @@ static FALLBACK_MODELS: Lazy<HashMap<&str, Vec<String>>> = Lazy::new(|| {
     m.insert("zen", vec!["zen-pro".into(), "zen-fast".into()]);
     m.insert("qwen", vec!["qwen-plus".into(), "qwen-max".into()]);
     m.insert("kimi", vec!["moonshot-v1-8k".into(), "moonshot-v1-32k".into()]);
+    m.insert("ollama", vec!["llama3.2".into(), "qwen2.5-coder".into(), "deepseek-coder-v2".into(), "codellama".into(), "mistral".into(), "gemma2".into()]);
+    m.insert("openrouter", vec![]);
     m
 });
 
@@ -32,19 +35,11 @@ pub fn ai_list_providers() -> Result<Vec<ProviderInfo>, String> {
 
 #[tauri::command]
 pub fn ai_get_config(
-    app: AppHandle,
-    state: State<'_, Mutex<WorkspaceState>>,
+    prefs: State<'_, JsonPrefsStore>,
+    secrets: State<'_, JsonSecretsStore>,
 ) -> Result<AiConfig, String> {
-    let config_path = {
-        let mut s = state.lock().map_err(|_| "workspace state lock failed")?;
-        if s.config_path.is_none() {
-            s.config_path = Some(app_config_path(&app)?);
-        }
-        s.config_path.clone().ok_or("missing config path")?
-    };
-
-    let cfg = load_app_config(&config_path);
-    let configured_providers = cfg.ai_keys.keys().cloned().collect::<Vec<_>>();
+    let cfg = prefs.load()?;
+    let configured_providers = secrets.list()?;
 
     Ok(AiConfig {
         configured_providers,
@@ -55,19 +50,10 @@ pub fn ai_get_config(
 
 #[tauri::command]
 pub fn ai_set_api_key(
-    app: AppHandle,
-    state: State<'_, Mutex<WorkspaceState>>,
+    secrets: State<'_, JsonSecretsStore>,
     provider: String,
     api_key: String,
 ) -> Result<bool, String> {
-    let config_path = {
-        let mut s = state.lock().map_err(|_| "workspace state lock failed")?;
-        if s.config_path.is_none() {
-            s.config_path = Some(app_config_path(&app)?);
-        }
-        s.config_path.clone().ok_or("missing config path")?
-    };
-
     let provider = provider.trim().to_string();
     let api_key = normalize_api_key(&api_key);
     if provider.is_empty() {
@@ -77,70 +63,57 @@ pub fn ai_set_api_key(
         return Err("API key is empty".into());
     }
 
-    let mut cfg = load_app_config(&config_path);
-    cfg.ai_keys.insert(provider, api_key);
-    save_app_config(&config_path, &cfg)?;
+    secrets.set(&provider, &api_key)?;
     Ok(true)
 }
 
 #[tauri::command]
 pub fn ai_remove_api_key(
-    app: AppHandle,
-    state: State<'_, Mutex<WorkspaceState>>,
+    prefs: State<'_, JsonPrefsStore>,
+    secrets: State<'_, JsonSecretsStore>,
     provider: String,
 ) -> Result<bool, String> {
-    let config_path = {
-        let mut s = state.lock().map_err(|_| "workspace state lock failed")?;
-        if s.config_path.is_none() {
-            s.config_path = Some(app_config_path(&app)?);
-        }
-        s.config_path.clone().ok_or("missing config path")?
-    };
+    secrets.remove(&provider)?;
 
-    let mut cfg = load_app_config(&config_path);
-    cfg.ai_keys.remove(&provider);
+    let mut cfg = prefs.load()?;
     if cfg.active_provider.as_deref() == Some(provider.as_str()) {
         cfg.active_provider = None;
         cfg.active_model = None;
+        prefs.save(&cfg)?;
     }
-    save_app_config(&config_path, &cfg)?;
+
     Ok(true)
 }
 
 #[tauri::command]
 pub fn ai_set_active(
-    app: AppHandle,
-    state: State<'_, Mutex<WorkspaceState>>,
+    prefs: State<'_, JsonPrefsStore>,
     provider: String,
     model: String,
 ) -> Result<bool, String> {
-    let config_path = {
-        let mut s = state.lock().map_err(|_| "workspace state lock failed")?;
-        if s.config_path.is_none() {
-            s.config_path = Some(app_config_path(&app)?);
-        }
-        s.config_path.clone().ok_or("missing config path")?
-    };
-
-    let mut cfg = load_app_config(&config_path);
+    let mut cfg = prefs.load()?;
     cfg.active_provider = if provider.is_empty() {
         None
     } else {
         Some(provider)
     };
     cfg.active_model = if model.is_empty() { None } else { Some(model) };
-    save_app_config(&config_path, &cfg)?;
+    prefs.save(&cfg)?;
     Ok(true)
 }
 
 #[tauri::command]
-pub async fn ai_list_models(provider: String) -> Result<Vec<String>, String> {
+pub async fn ai_list_models(
+    secrets: State<'_, JsonSecretsStore>,
+    provider: String,
+) -> Result<Vec<String>, String> {
     let provider_arc = REGISTRY.get(&provider)
         .ok_or_else(|| format!("unknown provider: {provider}"))?;
 
+    let api_key = secrets.get(&provider).ok().flatten();
     let fallback = FALLBACK_MODELS.get(provider.as_str()).cloned().unwrap_or_default();
 
-    match provider_arc.list_models(None, &HTTP_CLIENT).await {
+    match provider_arc.list_models(api_key.as_deref(), &HTTP_CLIENT).await {
         Ok(models) if !models.is_empty() => {
             Ok(models.into_iter().map(|m| m.id).collect())
         }
@@ -152,8 +125,8 @@ pub async fn ai_list_models(provider: String) -> Result<Vec<String>, String> {
 #[tauri::command]
 pub async fn ai_chat_stream(
     app: AppHandle,
-    workspace_state: State<'_, Mutex<WorkspaceState>>,
     ai_state: State<'_, Mutex<AiState>>,
+    secrets: State<'_, JsonSecretsStore>,
     args: AiChatArgs,
 ) -> Result<bool, String> {
     {
@@ -161,21 +134,10 @@ pub async fn ai_chat_stream(
         s.aborted_streams.remove(&args.stream_id);
     }
 
-    let config_path = {
-        let mut s = workspace_state
-            .lock()
-            .map_err(|_| "workspace state lock failed")?;
-        if s.config_path.is_none() {
-            s.config_path = Some(app_config_path(&app)?);
-        }
-        s.config_path.clone().ok_or("missing config path")?
-    };
-
-    let cfg = load_app_config(&config_path);
-    let raw_key = cfg
-        .ai_keys
+    let raw_key = secrets
         .get(&args.provider)
-        .cloned()
+        .ok()
+        .flatten()
         .ok_or("missing API key for provider")?;
     let key = normalize_api_key(&raw_key);
     if key.is_empty() {
