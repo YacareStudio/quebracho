@@ -1,246 +1,33 @@
-use crate::models::{AiChatArgs, AiConfig, ChatRole, ProviderInfo};
+use crate::models::{AiChatArgs, AiConfig, ChatMessage, ProviderInfo};
+use crate::providers::{default_registry, ProviderRegistry};
 use crate::state::{AiState, WorkspaceState};
 use crate::utils::{app_config_path, load_app_config, normalize_api_key, save_app_config};
+use crate::HTTP_CLIENT;
 use once_cell::sync::Lazy;
-use reqwest::Client;
 use serde_json::{json, Value};
+use std::collections::HashMap;
 use std::sync::Mutex;
 use tauri::{AppHandle, Emitter, State};
 
-static PROVIDERS: Lazy<Vec<ProviderInfo>> = Lazy::new(|| {
-    vec![
-        ProviderInfo {
-            id: "openai".into(),
-            name: "OpenAI".into(),
-            hint: Some("Uses OpenAI Chat Completions API".into()),
-            static_models: vec!["gpt-4o-mini".into(), "gpt-4.1-mini".into(), "gpt-4o".into()],
-        },
-        ProviderInfo {
-            id: "anthropic".into(),
-            name: "Anthropic".into(),
-            hint: Some("Uses Anthropic Messages API".into()),
-            static_models: vec![
-                "claude-3-5-sonnet-latest".into(),
-                "claude-3-5-haiku-latest".into(),
-            ],
-        },
-        ProviderInfo {
-            id: "google".into(),
-            name: "Google".into(),
-            hint: Some("Uses Gemini Generate Content API".into()),
-            static_models: vec!["gemini-1.5-flash".into(), "gemini-1.5-pro".into()],
-        },
-        ProviderInfo {
-            id: "deepseek".into(),
-            name: "DeepSeek".into(),
-            hint: Some("OpenAI-compatible API".into()),
-            static_models: vec!["deepseek-chat".into(), "deepseek-reasoner".into()],
-        },
-        ProviderInfo {
-            id: "minimax".into(),
-            name: "MiniMax".into(),
-            hint: Some("OpenAI-compatible API".into()),
-            static_models: vec!["MiniMax-M1".into(), "MiniMax-Text-01".into()],
-        },
-        ProviderInfo {
-            id: "opencode".into(),
-            name: "OpenCode Go".into(),
-            hint: Some("OpenAI-compatible API".into()),
-            static_models: vec!["opencode-go".into()],
-        },
-        ProviderInfo {
-            id: "zen".into(),
-            name: "Zen".into(),
-            hint: Some("OpenAI-compatible API".into()),
-            static_models: vec!["zen-pro".into(), "zen-fast".into()],
-        },
-        ProviderInfo {
-            id: "qwen".into(),
-            name: "Qwen".into(),
-            hint: Some("OpenAI-compatible API".into()),
-            static_models: vec!["qwen-plus".into(), "qwen-max".into()],
-        },
-        ProviderInfo {
-            id: "kimi".into(),
-            name: "Kimi".into(),
-            hint: Some("OpenAI-compatible API".into()),
-            static_models: vec!["moonshot-v1-8k".into(), "moonshot-v1-32k".into()],
-        },
-    ]
+static REGISTRY: Lazy<ProviderRegistry> = Lazy::new(default_registry);
+
+static FALLBACK_MODELS: Lazy<HashMap<&str, Vec<String>>> = Lazy::new(|| {
+    let mut m = HashMap::new();
+    m.insert("openai", vec!["gpt-4o-mini".into(), "gpt-4.1-mini".into(), "gpt-4o".into()]);
+    m.insert("anthropic", vec!["claude-3-5-sonnet-latest".into(), "claude-3-5-haiku-latest".into()]);
+    m.insert("google", vec!["gemini-1.5-flash".into(), "gemini-1.5-pro".into()]);
+    m.insert("deepseek", vec!["deepseek-chat".into(), "deepseek-reasoner".into()]);
+    m.insert("minimax", vec!["MiniMax-M1".into(), "MiniMax-Text-01".into()]);
+    m.insert("opencode", vec!["opencode-go".into()]);
+    m.insert("zen", vec!["zen-pro".into(), "zen-fast".into()]);
+    m.insert("qwen", vec!["qwen-plus".into(), "qwen-max".into()]);
+    m.insert("kimi", vec!["moonshot-v1-8k".into(), "moonshot-v1-32k".into()]);
+    m
 });
-
-async fn ai_complete(
-    provider: &str,
-    model: &str,
-    key: &str,
-    messages: &[ChatRole],
-) -> Result<String, String> {
-    let client = Client::new();
-
-    match provider {
-        "anthropic" => {
-            let system = messages
-                .iter()
-                .find(|m| m.role == "system")
-                .map(|m| m.content.clone())
-                .unwrap_or_default();
-            let user_messages: Vec<Value> = messages
-                .iter()
-                .filter(|m| m.role != "system")
-                .map(|m| {
-                    json!({
-                      "role": if m.role == "assistant" { "assistant" } else { "user" },
-                      "content": m.content
-                    })
-                })
-                .collect();
-
-            let resp = client
-                .post("https://api.anthropic.com/v1/messages")
-                .header("x-api-key", key)
-                .header("anthropic-version", "2023-06-01")
-                .json(&json!({
-                  "model": model,
-                  "max_tokens": 2048,
-                  "system": system,
-                  "messages": user_messages
-                }))
-                .send()
-                .await
-                .map_err(|e| format!("anthropic request failed: {e}"))?;
-
-            let status = resp.status();
-            let body: Value = resp
-                .json()
-                .await
-                .map_err(|e| format!("anthropic parse failed: {e}"))?;
-            if !status.is_success() {
-                return Err(format!("anthropic error: {}", body));
-            }
-
-            let text = body
-                .get("content")
-                .and_then(|v| v.as_array())
-                .and_then(|arr| arr.first())
-                .and_then(|item| item.get("text"))
-                .and_then(|v| v.as_str())
-                .unwrap_or("")
-                .to_string();
-            Ok(text)
-        }
-        "google" => {
-            let parts: Vec<Value> = messages
-                .iter()
-                .filter(|m| m.role != "system")
-                .map(|m| {
-                    json!({
-                      "role": if m.role == "assistant" { "model" } else { "user" },
-                      "parts": [{ "text": m.content }]
-                    })
-                })
-                .collect();
-            let url = format!(
-                "https://generativelanguage.googleapis.com/v1beta/models/{}:generateContent?key={}",
-                model, key
-            );
-            let resp = client
-                .post(url)
-                .json(&json!({ "contents": parts }))
-                .send()
-                .await
-                .map_err(|e| format!("google request failed: {e}"))?;
-            let status = resp.status();
-            let body: Value = resp
-                .json()
-                .await
-                .map_err(|e| format!("google parse failed: {e}"))?;
-            if !status.is_success() {
-                return Err(format!("google error: {}", body));
-            }
-            let text = body
-                .get("candidates")
-                .and_then(|v| v.as_array())
-                .and_then(|arr| arr.first())
-                .and_then(|c| c.get("content"))
-                .and_then(|c| c.get("parts"))
-                .and_then(|v| v.as_array())
-                .and_then(|arr| arr.first())
-                .and_then(|p| p.get("text"))
-                .and_then(|v| v.as_str())
-                .unwrap_or("")
-                .to_string();
-            Ok(text)
-        }
-        _ => {
-            let base = match provider {
-                "openai" => "https://api.openai.com/v1/chat/completions",
-                "deepseek" => "https://api.deepseek.com/v1/chat/completions",
-                "minimax" => "https://api.minimax.chat/v1/chat/completions",
-                "opencode" => "https://api.opencode.ai/v1/chat/completions",
-                "zen" => "https://api.zenai.run/v1/chat/completions",
-                "qwen" => "https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions",
-                "kimi" => "https://api.moonshot.cn/v1/chat/completions",
-                _ => return Err("unsupported provider".into()),
-            };
-
-            let resp = client
-                .post(base)
-                .header("Authorization", format!("Bearer {key}"))
-                .json(&json!({
-                  "model": model,
-                  "messages": messages,
-                  "stream": false
-                }))
-                .send()
-                .await
-                .map_err(|e| format!("provider request failed: {e}"))?;
-
-            let status = resp.status();
-            let body: Value = resp
-                .json()
-                .await
-                .map_err(|e| format!("provider parse failed: {e}"))?;
-            if !status.is_success() {
-                let api_message = body
-                    .get("error")
-                    .and_then(|e| e.get("message"))
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("unknown provider error");
-                let api_type = body
-                    .get("error")
-                    .and_then(|e| e.get("type"))
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("");
-
-                if status.as_u16() == 401
-                    || api_type.eq_ignore_ascii_case("invalid_authentication_error")
-                    || api_type.eq_ignore_ascii_case("invalid_api_key")
-                {
-                    return Err(format!(
-            "authentication failed for provider '{provider}': {api_message}. Verify that the API key belongs to this provider and does not include a 'Bearer ' prefix."
-          ));
-                }
-
-                return Err(format!("provider '{provider}' error: {api_message}"));
-            }
-
-            let text = body
-                .get("choices")
-                .and_then(|v| v.as_array())
-                .and_then(|arr| arr.first())
-                .and_then(|choice| choice.get("message"))
-                .and_then(|msg| msg.get("content"))
-                .and_then(|v| v.as_str())
-                .unwrap_or("")
-                .to_string();
-            Ok(text)
-        }
-    }
-}
 
 #[tauri::command]
 pub fn ai_list_providers() -> Result<Vec<ProviderInfo>, String> {
-    Ok(PROVIDERS.clone())
+    Ok(REGISTRY.list())
 }
 
 #[tauri::command]
@@ -347,13 +134,19 @@ pub fn ai_set_active(
 }
 
 #[tauri::command]
-pub fn ai_list_models(provider: String) -> Result<Vec<String>, String> {
-    let models = PROVIDERS
-        .iter()
-        .find(|p| p.id == provider)
-        .map(|p| p.static_models.clone())
-        .unwrap_or_default();
-    Ok(models)
+pub async fn ai_list_models(provider: String) -> Result<Vec<String>, String> {
+    let provider_arc = REGISTRY.get(&provider)
+        .ok_or_else(|| format!("unknown provider: {provider}"))?;
+
+    let fallback = FALLBACK_MODELS.get(provider.as_str()).cloned().unwrap_or_default();
+
+    match provider_arc.list_models(None, &HTTP_CLIENT).await {
+        Ok(models) if !models.is_empty() => {
+            Ok(models.into_iter().map(|m| m.id).collect())
+        }
+        Ok(_) => Ok(fallback),
+        Err(_) => Ok(fallback),
+    }
 }
 
 #[tauri::command]
@@ -389,10 +182,19 @@ pub async fn ai_chat_stream(
         return Err("stored API key is empty; please configure it again".into());
     }
 
-    let response = ai_complete(&args.provider, &args.model, &key, &args.messages).await;
+    let provider_arc = REGISTRY.get(&args.provider)
+        .ok_or_else(|| format!("unknown provider: {}", args.provider))?;
+
+    let messages: Vec<ChatMessage> = args.messages.into_iter().map(|m| ChatMessage {
+        role: m.role,
+        content: m.content,
+    }).collect();
+
+    let response = provider_arc.chat_complete(&args.model, &key, &messages, &HTTP_CLIENT).await;
 
     match response {
-        Ok(text) => {
+        Ok(chat_resp) => {
+            let text = chat_resp.content;
             let chunks: Vec<String> = if text.is_empty() {
                 vec![String::new()]
             } else {
@@ -445,7 +247,7 @@ pub async fn ai_chat_stream(
                 json!({
                   "streamId": args.stream_id,
                   "event": "error",
-                  "data": err
+                  "data": err.to_string()
                 }),
             );
             Ok(false)

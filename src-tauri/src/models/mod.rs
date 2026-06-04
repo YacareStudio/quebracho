@@ -1,5 +1,8 @@
 use serde::{Deserialize, Serialize};
 
+pub mod provider;
+pub use provider::*;
+
 #[derive(Serialize, Clone)]
 pub struct FsChangeEvent {
     pub reason: String,
