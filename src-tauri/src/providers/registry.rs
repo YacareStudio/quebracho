@@ -43,7 +43,7 @@ pub fn default_registry() -> ProviderRegistry {
         id: "openai",
         name: "OpenAI",
         hint: Some("Uses OpenAI Chat Completions API"),
-        base_url: "https://api.openai.com",
+        base_url: std::sync::Mutex::new("https://api.openai.com".to_string()),
         requires_auth_list: true,
     }));
 
@@ -55,7 +55,7 @@ pub fn default_registry() -> ProviderRegistry {
         id: "deepseek",
         name: "DeepSeek",
         hint: Some("OpenAI-compatible API"),
-        base_url: "https://api.deepseek.com",
+        base_url: std::sync::Mutex::new("https://api.deepseek.com".to_string()),
         requires_auth_list: true,
     }));
 
@@ -63,7 +63,7 @@ pub fn default_registry() -> ProviderRegistry {
         id: "minimax",
         name: "MiniMax",
         hint: Some("OpenAI-compatible API"),
-        base_url: "https://api.minimax.chat",
+        base_url: std::sync::Mutex::new("https://api.minimax.chat".to_string()),
         requires_auth_list: true,
     }));
 
@@ -71,7 +71,7 @@ pub fn default_registry() -> ProviderRegistry {
         id: "opencode",
         name: "OpenCode Go",
         hint: Some("OpenAI-compatible API"),
-        base_url: "https://api.opencode.ai",
+        base_url: std::sync::Mutex::new("https://api.opencode.ai".to_string()),
         requires_auth_list: true,
     }));
 
@@ -79,7 +79,7 @@ pub fn default_registry() -> ProviderRegistry {
         id: "zen",
         name: "Zen",
         hint: Some("OpenAI-compatible API"),
-        base_url: "https://api.zenai.run",
+        base_url: std::sync::Mutex::new("https://api.zenai.run".to_string()),
         requires_auth_list: true,
     }));
 
@@ -87,7 +87,7 @@ pub fn default_registry() -> ProviderRegistry {
         id: "qwen",
         name: "Qwen",
         hint: Some("OpenAI-compatible API"),
-        base_url: "https://dashscope-intl.aliyuncs.com/compatible-mode",
+        base_url: std::sync::Mutex::new("https://dashscope-intl.aliyuncs.com/compatible-mode".to_string()),
         requires_auth_list: true,
     }));
 
@@ -95,11 +95,11 @@ pub fn default_registry() -> ProviderRegistry {
         id: "kimi",
         name: "Kimi",
         hint: Some("OpenAI-compatible API"),
-        base_url: "https://api.moonshot.cn",
+        base_url: std::sync::Mutex::new("https://api.moonshot.cn".to_string()),
         requires_auth_list: true,
     }));
 
-    registry.register(Arc::new(OllamaProvider));
+    registry.register(Arc::new(OllamaProvider::default()));
     registry.register(Arc::new(OpenRouterProvider));
 
     registry

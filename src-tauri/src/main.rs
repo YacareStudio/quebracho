@@ -64,6 +64,7 @@ fn main() {
             ai_remove_api_key,
             ai_set_active,
             ai_list_models,
+            ai_set_provider_base_url,
             ai_chat_stream,
             ai_abort_stream,
             forge_read_history,

@@ -16,8 +16,8 @@ impl Provider for GoogleProvider {
         "Google Gemini"
     }
 
-    fn base_url(&self) -> &str {
-        "https://generativelanguage.googleapis.com"
+    fn base_url(&self) -> String {
+        "https://generativelanguage.googleapis.com".to_string()
     }
 
     fn requires_auth_for_list(&self) -> bool {

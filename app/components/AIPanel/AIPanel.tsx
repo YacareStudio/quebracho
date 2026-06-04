@@ -18,6 +18,17 @@ function providerDisplayName(
   return id.charAt(0).toUpperCase() + id.slice(1);
 }
 
+/** Three pulsing dots used as a skeleton while model lists load. */
+function SkeletonDots() {
+  return (
+    <div className="flex items-center gap-1 px-3 py-2">
+      <span className="w-1.5 h-1.5 rounded-full bg-quebracho-text-dim animate-pulse" />
+      <span className="w-1.5 h-1.5 rounded-full bg-quebracho-text-dim animate-pulse" style={{ animationDelay: '150ms' }} />
+      <span className="w-1.5 h-1.5 rounded-full bg-quebracho-text-dim animate-pulse" style={{ animationDelay: '300ms' }} />
+    </div>
+  );
+}
+
 /** Top bar: shows the active provider/model on the left and the "+" key
  *  button on the right. Clicking the model name opens the picker dropdown,
  *  which lets the user switch between already-configured providers and
@@ -27,16 +38,18 @@ function TopBar() {
   const activeProvider = useStore((s) => s.aiActiveProvider);
   const activeModel = useStore((s) => s.aiActiveModel);
   const availableModels = useStore((s) => s.aiAvailableModels);
+  const modelLoadStatus = useStore((s) => s.aiModelLoadStatus);
   const configuredProviders = useStore((s) => s.aiConfiguredProviders);
   const setActive = useStore((s) => s.setAIActive);
   const setApiKeyModalOpen = useStore((s) => s.setAIApiKeyModalOpen);
   const refreshAIConfig = useStore((s) => s.refreshAIConfig);
   const setAvailableModels = useStore((s) => s.setAIAvailableModels);
+  const setModelLoadStatus = useStore((s) => s.setAIModelLoadStatus);
   const menuOpen = useStore((s) => s.aiModelMenuOpen);
   const setMenuOpen = useStore((s) => s.setAIModelMenuOpen);
 
   const [providers, setProviders] = useState<ProviderInfo[] | null>(null);
-  const [loadingList, setLoadingList] = useState(false);
+  const [baseUrlInput, setBaseUrlInput] = useState('');
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Hydrate provider list + active config from the main process when this
@@ -68,22 +81,30 @@ function TopBar() {
     };
   }, [menuOpen, setMenuOpen]);
 
+  /** Determine whether the given provider should show a base-URL input. */
+  const showsBaseUrl = (pid: ProviderId): boolean => {
+    if (pid === 'ollama') return true;
+    const info = providers?.find((p) => p.id === pid);
+    if (info?.hint?.toLowerCase().includes('openai-compatible')) return true;
+    return false;
+  };
+
   /** Ensure the model list for `provider` is loaded into `availableModels`.
    *  Returns the resolved list (or [] on error). */
   const ensureModelsLoaded = async (provider: ProviderId): Promise<string[]> => {
     if (availableModels[provider] && availableModels[provider]!.length > 0) {
       return availableModels[provider]!;
     }
-    setLoadingList(true);
+    setModelLoadStatus(provider, 'loading');
     try {
       const models = await window.forgeAPI.ai.listModels(provider);
       setAvailableModels(provider, models);
+      setModelLoadStatus(provider, 'success');
       return models;
     } catch (err) {
       console.warn('[quebracho] listModels failed for', provider, (err as Error)?.message);
+      setModelLoadStatus(provider, 'error');
       return [];
-    } finally {
-      setLoadingList(false);
     }
   };
 
@@ -119,7 +140,15 @@ function TopBar() {
     await setActive(provider, first);
   };
 
+  const handleBaseUrlChange = (pid: ProviderId, url: string) => {
+    setBaseUrlInput(url);
+    if (url.trim()) {
+      void window.forgeAPI.ai.setProviderBaseUrl(pid, url.trim());
+    }
+  };
+
   const models = activeProvider ? availableModels[activeProvider] || [] : [];
+  const loadStatus = activeProvider ? modelLoadStatus[activeProvider] : 'idle';
 
   return (
     <div className="h-[40px] flex items-center justify-between px-3 border-b border-quebracho-border select-none flex-shrink-0">
@@ -178,12 +207,18 @@ function TopBar() {
                 provider: providerDisplayName(activeProvider, providers),
               })}
             </div>
-            {loadingList && (
-              <div className="px-3 py-2 text-[12px] text-quebracho-text-dim">
-                {t(uiLanguage, 'aiPanel.loadingModels')}
+            {loadStatus === 'loading' && <SkeletonDots />}
+            {loadStatus === 'error' && (
+              <div className="px-3 py-2">
+                <div className="text-[11px] text-red-400">
+                  {t(uiLanguage, 'aiPanel.discoveryFailed')}
+                </div>
+                <div className="text-[10px] text-quebracho-text-dim mt-0.5">
+                  {t(uiLanguage, 'aiPanel.usingStaticList')}
+                </div>
               </div>
             )}
-            {!loadingList && models.length === 0 && (
+            {loadStatus !== 'loading' && models.length === 0 && (
               <div className="px-3 py-2 text-[12px] text-quebracho-text-dim">
                 {t(uiLanguage, 'aiPanel.noModels')}
               </div>
@@ -202,6 +237,25 @@ function TopBar() {
                 {m === activeModel && <Check size={12} className="flex-shrink-0 ml-2" />}
               </button>
             ))}
+
+            {/* Optional base-URL input for Ollama / custom providers */}
+            {activeProvider && showsBaseUrl(activeProvider) && (
+              <div className="border-t border-quebracho-border/60 px-3 py-2">
+                <label className="block text-[10px] text-quebracho-text-dim mb-1">
+                  {t(uiLanguage, 'aiPanel.baseUrl')}
+                </label>
+                <input
+                  type="text"
+                  placeholder="http://localhost:11434"
+                  value={baseUrlInput}
+                  onChange={(e) => handleBaseUrlChange(activeProvider, e.target.value)}
+                  className="quebracho-input w-full text-[12px]"
+                />
+                <p className="mt-1 text-[10px] text-quebracho-text-dim">
+                  {t(uiLanguage, 'aiPanel.baseUrlHint')}
+                </p>
+              </div>
+            )}
 
             {/* Section 3: footer → open the API-key manager */}
             <div className="border-t border-quebracho-border/60">

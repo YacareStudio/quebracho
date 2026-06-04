@@ -16,8 +16,8 @@ impl Provider for AnthropicProvider {
         "Anthropic"
     }
 
-    fn base_url(&self) -> &str {
-        "https://api.anthropic.com"
+    fn base_url(&self) -> String {
+        "https://api.anthropic.com".to_string()
     }
 
     fn requires_auth_for_list(&self) -> bool {

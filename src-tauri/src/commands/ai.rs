@@ -307,6 +307,18 @@ pub async fn ai_chat_stream(
 }
 
 #[tauri::command]
+pub fn ai_set_provider_base_url(provider: String, url: String) -> Result<bool, String> {
+    let registry = REGISTRY.get(&provider)
+        .ok_or_else(|| format!("unknown provider: {provider}"))?;
+    let trimmed = url.trim();
+    if trimmed.is_empty() {
+        return Err("URL cannot be empty".into());
+    }
+    registry.set_base_url(trimmed.to_string());
+    Ok(true)
+}
+
+#[tauri::command]
 pub fn ai_abort_stream(ai_state: State<'_, Mutex<AiState>>, stream_id: String) -> Result<bool, String> {
     let mut s = ai_state.lock().map_err(|_| "ai state lock failed")?;
     s.aborted_streams.insert(stream_id.clone());

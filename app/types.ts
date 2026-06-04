@@ -356,6 +356,7 @@ export interface ForgeAPI {
     removeApiKey: (provider: ProviderId) => Promise<boolean>;
     setActive: (provider: ProviderId, model: string) => Promise<boolean>;
     listModels: (provider: ProviderId) => Promise<string[]>;
+    setProviderBaseUrl: (id: ProviderId, url: string) => Promise<boolean>;
     chatStream: (args: {
       streamId: string;
       provider: ProviderId;

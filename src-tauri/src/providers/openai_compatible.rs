@@ -8,7 +8,7 @@ pub struct OpenAiCompatibleProvider {
     pub id: &'static str,
     pub name: &'static str,
     pub hint: Option<&'static str>,
-    pub base_url: &'static str,
+    pub base_url: std::sync::Mutex<String>,
     pub requires_auth_list: bool,
 }
 
@@ -26,8 +26,14 @@ impl Provider for OpenAiCompatibleProvider {
         self.hint
     }
 
-    fn base_url(&self) -> &str {
-        self.base_url
+    fn base_url(&self) -> String {
+        self.base_url.lock().unwrap().clone()
+    }
+
+    fn set_base_url(&self, url: String) {
+        if let Ok(mut guard) = self.base_url.lock() {
+            *guard = url;
+        }
     }
 
     fn requires_auth_for_list(&self) -> bool {
@@ -39,7 +45,7 @@ impl Provider for OpenAiCompatibleProvider {
             return Ok(vec![]);
         }
 
-        let url = format!("{}/v1/models", self.base_url);
+        let url = format!("{}/v1/models", self.base_url());
         let mut req = http.get(&url);
         if let Some(key) = api_key {
             req = req.header("Authorization", format!("Bearer {key}"));
@@ -72,7 +78,7 @@ impl Provider for OpenAiCompatibleProvider {
     }
 
     async fn chat_complete(&self, model: &str, api_key: &str, messages: &[ChatMessage], http: &reqwest::Client) -> Result<ChatResponse, ProviderError> {
-        let url = format!("{}/v1/chat/completions", self.base_url);
+        let url = format!("{}/v1/chat/completions", self.base_url());
         let body_json = serde_json::json!({
             "model": model,
             "messages": messages,
@@ -115,7 +121,7 @@ impl Provider for OpenAiCompatibleProvider {
         messages: &[ChatMessage],
         http: &reqwest::Client,
     ) -> Result<std::pin::Pin<Box<dyn Stream<Item = Result<StreamChunk, ProviderError>> + Send>>, ProviderError> {
-        let url = format!("{}/v1/chat/completions", self.base_url);
+        let url = format!("{}/v1/chat/completions", self.base_url());
         let body_json = serde_json::json!({
             "model": model,
             "messages": messages,
@@ -177,7 +183,7 @@ mod tests {
             id: "test",
             name: "Test",
             hint: None,
-            base_url,
+            base_url: std::sync::Mutex::new(base_url.to_string()),
             requires_auth_list: true,
         };
 
@@ -212,7 +218,7 @@ mod tests {
             id: "test",
             name: "Test",
             hint: None,
-            base_url,
+            base_url: std::sync::Mutex::new(base_url.to_string()),
             requires_auth_list: true,
         };
 

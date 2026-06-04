@@ -97,6 +97,8 @@ interface EditorState {
   aiActiveModel: string | null;
   /** Model lists by provider, populated lazily after key entry. */
   aiAvailableModels: Partial<Record<ProviderId, string[]>>;
+  /** Loading status per provider: idle | loading | success | error. */
+  aiModelLoadStatus: Partial<Record<ProviderId, 'idle' | 'loading' | 'success' | 'error'>>;
   /** Whether the model dropdown is open. */
   aiModelMenuOpen: boolean;
   /** Keyring storage status: 'os' = system keychain, 'local' = JSON file. */
@@ -120,6 +122,7 @@ interface EditorState {
   setAIApiKeyModalOpen: (open: boolean) => void;
   refreshAIConfig: () => Promise<void>;
   setAIAvailableModels: (provider: ProviderId, models: string[]) => void;
+  setAIModelLoadStatus: (provider: ProviderId, status: 'idle' | 'loading' | 'success' | 'error') => void;
   setAIActive: (provider: ProviderId, model: string) => Promise<void>;
   /** Remove an API key for a provider. If it was the active one, clear it. */
   removeAIProvider: (provider: ProviderId) => Promise<void>;
@@ -291,6 +294,7 @@ export const useStore = create<EditorState>((set, get) => ({
   aiActiveProvider: null,
   aiActiveModel: null,
   aiAvailableModels: {},
+  aiModelLoadStatus: {},
   aiModelMenuOpen: false,
   aiKeyringStatus: null,
   aiInitDone: false,
@@ -328,6 +332,11 @@ export const useStore = create<EditorState>((set, get) => ({
   setAIAvailableModels: (provider, models) => {
     set((state) => ({
       aiAvailableModels: { ...state.aiAvailableModels, [provider]: models },
+    }));
+  },
+  setAIModelLoadStatus: (provider, status) => {
+    set((state) => ({
+      aiModelLoadStatus: { ...state.aiModelLoadStatus, [provider]: status },
     }));
   },
   setAIActive: async (provider, model) => {

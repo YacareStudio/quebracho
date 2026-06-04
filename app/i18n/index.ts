@@ -251,6 +251,8 @@ const translations = {
         local: 'Almacenado localmente',
       },
       keyStored: 'Clave almacenada de forma segura',
+      baseUrl: 'URL base',
+      baseUrlHint: 'Cambiar si Ollama corre en otro puerto',
     },
   },
   en: {
@@ -499,6 +501,8 @@ const translations = {
         local: 'Stored locally',
       },
       keyStored: 'Key stored securely',
+      baseUrl: 'Base URL',
+      baseUrlHint: 'Change if Ollama runs on another port',
     },
   },
 } as const;

@@ -3,7 +3,17 @@ use crate::models::{ChatMessage, ChatResponse, ModelInfo, ProviderError};
 use crate::providers::Provider;
 use serde_json::Value;
 
-pub struct OllamaProvider;
+pub struct OllamaProvider {
+    base_url: std::sync::Mutex<String>,
+}
+
+impl Default for OllamaProvider {
+    fn default() -> Self {
+        Self {
+            base_url: std::sync::Mutex::new("http://localhost:11434".to_string()),
+        }
+    }
+}
 
 #[async_trait]
 impl Provider for OllamaProvider {
@@ -19,8 +29,14 @@ impl Provider for OllamaProvider {
         Some("Local models via Ollama")
     }
 
-    fn base_url(&self) -> &str {
-        "http://localhost:11434"
+    fn base_url(&self) -> String {
+        self.base_url.lock().unwrap().clone()
+    }
+
+    fn set_base_url(&self, url: String) {
+        if let Ok(mut guard) = self.base_url.lock() {
+            *guard = url;
+        }
     }
 
     fn requires_auth_for_list(&self) -> bool {
