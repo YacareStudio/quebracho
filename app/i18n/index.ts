@@ -246,6 +246,11 @@ const translations = {
       },
       discoveryFailed: 'No se pudo obtener la lista de modelos',
       usingStaticList: 'Usando lista estática',
+      keyringStatus: {
+        os: 'Almacenado en el llavero del sistema',
+        local: 'Almacenado localmente',
+      },
+      keyStored: 'Clave almacenada de forma segura',
     },
   },
   en: {
@@ -489,6 +494,11 @@ const translations = {
       },
       discoveryFailed: 'Could not fetch model list',
       usingStaticList: 'Using static list',
+      keyringStatus: {
+        os: 'Stored in OS keychain',
+        local: 'Stored locally',
+      },
+      keyStored: 'Key stored securely',
     },
   },
 } as const;

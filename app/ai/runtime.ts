@@ -82,7 +82,7 @@ async function streamSingleTurn(args: {
     );
 
     console.debug(
-      '[forge:ai] runtime → chatStream provider=%s model=%s messages=%d',
+      '[quebracho:ai] runtime → chatStream provider=%s model=%s messages=%d',
       args.provider,
       args.model,
       args.chatMessages.length,
@@ -675,13 +675,13 @@ async function runInit(): Promise<void> {
   const contenido = String(writeCall.args.contenido ?? '');
   try {
     await window.forgeAPI.agent.escribirArchivo(ws, 'PROJECT.md', contenido);
-    // Create `.forge/` directory and an empty `history.json` so the
+    // Create `.quebracho/` directory and an empty `history.json` so the
     // per-project conversation persistence kicks in immediately.
     try {
-      await window.forgeAPI.forge.ensureForgeDir(ws);
+      await window.forgeAPI.quebracho.ensureForgeDir(ws);
     } catch (err) {
       console.warn(
-        '[forge] ensureForgeDir failed during /init:',
+        '[quebracho] ensureForgeDir failed during /init:',
         (err as Error)?.message,
       );
     }
@@ -704,7 +704,7 @@ async function runInit(): Promise<void> {
       await useStore.getState().saveProjectHistory();
     } catch (err) {
       console.debug(
-        '[forge] saveProjectHistory after /init failed:',
+        '[quebracho] saveProjectHistory after /init failed:',
         (err as Error)?.message,
       );
     }

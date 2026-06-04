@@ -7,47 +7,47 @@
 
 /* ── Runtime color themes (used by Tailwind color tokens) ───────────── */
 :root {
-  --forge-bg: 50 54 67;
-  --forge-titlebar: 42 45 56;
-  --forge-activitybar: 42 45 56;
-  --forge-sidebar: 36 40 46;
-  --forge-tabbar: 39 39 47;
-  --forge-tab-active: 45 47 56;
-  --forge-editor: 45 47 56;
-  --forge-statusbar: 47 50 63;
-  --forge-terminal: 31 32 37;
-  --forge-border: 58 63 75;
-  --forge-input: 31 32 37;
-  --forge-hover: 255 255 255;
-  --forge-text: 208 211 218;
-  --forge-text-strong: 255 255 255;
-  --forge-text-dim: 161 163 175;
-  --forge-text-tab: 150 150 157;
-  --forge-text-term: 177 180 188;
-  --forge-text-menu: 211 213 222;
-  --forge-accent: 74 219 148;
+  --quebracho-bg: 50 54 67;
+  --quebracho-titlebar: 42 45 56;
+  --quebracho-activitybar: 42 45 56;
+  --quebracho-sidebar: 36 40 46;
+  --quebracho-tabbar: 39 39 47;
+  --quebracho-tab-active: 45 47 56;
+  --quebracho-editor: 45 47 56;
+  --quebracho-statusbar: 47 50 63;
+  --quebracho-terminal: 31 32 37;
+  --quebracho-border: 58 63 75;
+  --quebracho-input: 31 32 37;
+  --quebracho-hover: 255 255 255;
+  --quebracho-text: 208 211 218;
+  --quebracho-text-strong: 255 255 255;
+  --quebracho-text-dim: 161 163 175;
+  --quebracho-text-tab: 150 150 157;
+  --quebracho-text-term: 177 180 188;
+  --quebracho-text-menu: 211 213 222;
+  --quebracho-accent: 74 219 148;
 }
 
 html[data-color-theme='aura-dark'] {
-  --forge-bg: 22 20 32;
-  --forge-titlebar: 26 24 37;
-  --forge-activitybar: 26 24 37;
-  --forge-sidebar: 27 26 36;
-  --forge-tabbar: 31 29 44;
-  --forge-tab-active: 39 36 55;
-  --forge-editor: 21 20 27;
-  --forge-statusbar: 34 31 47;
-  --forge-terminal: 18 17 26;
-  --forge-border: 58 50 78;
-  --forge-input: 22 21 31;
-  --forge-hover: 158 124 255;
-  --forge-text: 223 225 255;
-  --forge-text-strong: 255 255 255;
-  --forge-text-dim: 170 162 200;
-  --forge-text-tab: 174 167 206;
-  --forge-text-term: 215 217 255;
-  --forge-text-menu: 223 225 255;
-  --forge-accent: 158 124 255;
+  --quebracho-bg: 22 20 32;
+  --quebracho-titlebar: 26 24 37;
+  --quebracho-activitybar: 26 24 37;
+  --quebracho-sidebar: 27 26 36;
+  --quebracho-tabbar: 31 29 44;
+  --quebracho-tab-active: 39 36 55;
+  --quebracho-editor: 21 20 27;
+  --quebracho-statusbar: 34 31 47;
+  --quebracho-terminal: 18 17 26;
+  --quebracho-border: 58 50 78;
+  --quebracho-input: 22 21 31;
+  --quebracho-hover: 158 124 255;
+  --quebracho-text: 223 225 255;
+  --quebracho-text-strong: 255 255 255;
+  --quebracho-text-dim: 170 162 200;
+  --quebracho-text-tab: 174 167 206;
+  --quebracho-text-term: 215 217 255;
+  --quebracho-text-menu: 223 225 255;
+  --quebracho-accent: 158 124 255;
 }
 
 /* ── Global Styles ──────────────────────────────────────────────────── */
@@ -58,8 +58,8 @@ body {
   -moz-osx-font-smoothing: grayscale;
   user-select: none;
   overflow: hidden;
-  background-color: rgb(var(--forge-bg));
-  color: rgb(var(--forge-text));
+  background-color: rgb(var(--quebracho-bg));
+  color: rgb(var(--quebracho-text));
 }
 
 /* ── Title Bar Drag ─────────────────────────────────────────────────── */
@@ -194,10 +194,10 @@ body {
 }
 
 /* ── Generic input ──────────────────────────────────────────────────── */
-.forge-input {
-  background-color: rgb(var(--forge-input));
-  border: 1px solid rgb(var(--forge-accent));
-  color: rgb(var(--forge-text));
+.quebracho-input {
+  background-color: rgb(var(--quebracho-input));
+  border: 1px solid rgb(var(--quebracho-accent));
+  color: rgb(var(--quebracho-text));
   outline: none;
   padding: 4px 8px;
   border-radius: 4px;

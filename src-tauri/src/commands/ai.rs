@@ -1,13 +1,13 @@
 use crate::models::{AiChatArgs, AiConfig, ChatMessage, ProviderInfo};
 use crate::providers::{default_registry, ProviderRegistry};
 use crate::state::AiState;
-use crate::storage::{JsonPrefsStore, JsonSecretsStore, PrefsStore, SecretsStore};
+use crate::storage::{JsonPrefsStore, PrefsStore, SecretsStore};
 use crate::utils::normalize_api_key;
 use crate::HTTP_CLIENT;
 use once_cell::sync::Lazy;
 use serde_json::{json, Value};
 use std::collections::HashMap;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use tauri::{AppHandle, Emitter, State};
 
 static REGISTRY: Lazy<ProviderRegistry> = Lazy::new(default_registry);
@@ -36,21 +36,26 @@ pub fn ai_list_providers() -> Result<Vec<ProviderInfo>, String> {
 #[tauri::command]
 pub fn ai_get_config(
     prefs: State<'_, JsonPrefsStore>,
-    secrets: State<'_, JsonSecretsStore>,
+    secrets: State<'_, Arc<dyn SecretsStore>>,
 ) -> Result<AiConfig, String> {
     let cfg = prefs.load()?;
     let configured_providers = secrets.list()?;
+    let keyring_status = match secrets.kind() {
+        "keyring" => Some("os".to_string()),
+        _ => Some("local".to_string()),
+    };
 
     Ok(AiConfig {
         configured_providers,
         active_provider: cfg.active_provider,
         active_model: cfg.active_model,
+        keyring_status,
     })
 }
 
 #[tauri::command]
 pub fn ai_set_api_key(
-    secrets: State<'_, JsonSecretsStore>,
+    secrets: State<'_, Arc<dyn SecretsStore>>,
     provider: String,
     api_key: String,
 ) -> Result<bool, String> {
@@ -70,7 +75,7 @@ pub fn ai_set_api_key(
 #[tauri::command]
 pub fn ai_remove_api_key(
     prefs: State<'_, JsonPrefsStore>,
-    secrets: State<'_, JsonSecretsStore>,
+    secrets: State<'_, Arc<dyn SecretsStore>>,
     provider: String,
 ) -> Result<bool, String> {
     secrets.remove(&provider)?;
@@ -104,7 +109,7 @@ pub fn ai_set_active(
 
 #[tauri::command]
 pub async fn ai_list_models(
-    secrets: State<'_, JsonSecretsStore>,
+    secrets: State<'_, Arc<dyn SecretsStore>>,
     provider: String,
 ) -> Result<Vec<String>, String> {
     let provider_arc = REGISTRY.get(&provider)
@@ -126,7 +131,7 @@ pub async fn ai_list_models(
 pub async fn ai_chat_stream(
     app: AppHandle,
     ai_state: State<'_, Mutex<AiState>>,
-    secrets: State<'_, JsonSecretsStore>,
+    secrets: State<'_, Arc<dyn SecretsStore>>,
     args: AiChatArgs,
 ) -> Result<bool, String> {
     {
@@ -227,7 +232,7 @@ pub fn ai_abort_stream(ai_state: State<'_, Mutex<AiState>>, stream_id: String) -
 #[tauri::command]
 pub fn forge_read_history(workspace_path: String) -> Result<Option<Vec<Value>>, String> {
     let history_path = std::path::PathBuf::from(&workspace_path)
-        .join(".forge")
+        .join(".quebracho")
         .join("history.json");
     if !history_path.exists() {
         return Ok(None);
@@ -240,8 +245,8 @@ pub fn forge_read_history(workspace_path: String) -> Result<Option<Vec<Value>>, 
 
 #[tauri::command]
 pub fn forge_write_history(workspace_path: String, messages: Vec<Value>) -> Result<bool, String> {
-    let forge_dir = std::path::PathBuf::from(&workspace_path).join(".forge");
-    std::fs::create_dir_all(&forge_dir).map_err(|e| format!("ensure forge dir failed: {e}"))?;
+    let forge_dir = std::path::PathBuf::from(&workspace_path).join(".quebracho");
+    std::fs::create_dir_all(&forge_dir).map_err(|e| format!("ensure quebracho dir failed: {e}"))?;
     let history_path = forge_dir.join("history.json");
     let body = serde_json::to_string_pretty(&messages)
         .map_err(|e| format!("serialize history failed: {e}"))?;
@@ -251,8 +256,8 @@ pub fn forge_write_history(workspace_path: String, messages: Vec<Value>) -> Resu
 
 #[tauri::command]
 pub fn forge_ensure_forge_dir(workspace_path: String) -> Result<bool, String> {
-    let forge_dir = std::path::PathBuf::from(&workspace_path).join(".forge");
-    std::fs::create_dir_all(&forge_dir).map_err(|e| format!("ensure forge dir failed: {e}"))?;
+    let forge_dir = std::path::PathBuf::from(&workspace_path).join(".quebracho");
+    std::fs::create_dir_all(&forge_dir).map_err(|e| format!("ensure quebracho dir failed: {e}"))?;
     let history_path = forge_dir.join("history.json");
     if !history_path.exists() {
         std::fs::write(&history_path, "[]").map_err(|e| format!("create history failed: {e}"))?;
@@ -263,7 +268,7 @@ pub fn forge_ensure_forge_dir(workspace_path: String) -> Result<bool, String> {
 #[tauri::command]
 pub fn forge_has_history(workspace_path: String) -> Result<bool, String> {
     let history_path = std::path::PathBuf::from(&workspace_path)
-        .join(".forge")
+        .join(".quebracho")
         .join("history.json");
     Ok(history_path.exists())
 }

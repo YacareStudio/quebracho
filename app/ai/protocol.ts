@@ -67,7 +67,7 @@ export function buildSystemPrompt(opts: {
   const sections: string[] = [];
 
   sections.push(
-    `Eres "Forge", un agente de programación integrado en un editor de código de escritorio.
+    `Eres "Quebracho", un agente de programación integrado en un editor de código de escritorio.
 Hablas SIEMPRE en español. Eres conciso, claro y directo.
 El usuario está trabajando en el siguiente proyecto: ${workspacePath || '(sin proyecto)'}`,
   );
@@ -127,7 +127,7 @@ export function buildInitSystemPrompt(opts: {
     .map((f) => `### ${f.relPath}\n\n${f.content}\n`)
     .join('\n\n');
 
-  return `Eres "Forge", un agente de programación. Tu única tarea ahora es generar el archivo PROJECT.md para el proyecto ubicado en: ${workspacePath}
+  return `Eres "Quebracho", un agente de programación. Tu única tarea ahora es generar el archivo PROJECT.md para el proyecto ubicado en: ${workspacePath}
 
 Vas a recibir el árbol de archivos y el contenido de los archivos más importantes. Con esa información, debes generar un PROJECT.md en español que incluya:
 

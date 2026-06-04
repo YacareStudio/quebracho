@@ -8,6 +8,7 @@ pub trait SecretsStore: Send + Sync {
     fn set(&self, provider_id: &str, key: &str) -> Result<(), String>;
     fn remove(&self, provider_id: &str) -> Result<(), String>;
     fn list(&self) -> Result<Vec<String>, String>;
+    fn kind(&self) -> &'static str;
 }
 
 #[derive(Serialize, Deserialize, Default)]
@@ -96,6 +97,10 @@ impl SecretsStore for JsonSecretsStore {
         self.ensure_loaded()?;
         let cache = self.cache.lock().map_err(|_| "secrets cache lock failed")?;
         Ok(cache.keys().cloned().collect())
+    }
+
+    fn kind(&self) -> &'static str {
+        "json"
     }
 }
 

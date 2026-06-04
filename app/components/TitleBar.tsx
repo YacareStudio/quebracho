@@ -179,7 +179,7 @@ export default function TitleBar() {
   const handleClose = () => window.forgeAPI?.close();
 
   const emitEditorCommand = (command: EditorMenuCommand) => {
-    window.dispatchEvent(new CustomEvent('forge:editor-command', { detail: { command } }));
+    window.dispatchEvent(new CustomEvent('quebracho:editor-command', { detail: { command } }));
   };
 
   useEffect(() => {
@@ -587,16 +587,16 @@ export default function TitleBar() {
     <div className="dropdown-menu min-w-[260px] py-1">
       {items.map((item) => {
         if (item.divider) {
-          return <div key={item.id} className="h-px my-1 bg-forge-border/60" />;
+          return <div key={item.id} className="h-px my-1 bg-quebracho-border/60" />;
         }
 
         const itemHasSubmenu = !!item.submenu?.length;
         const submenuOpen = openSubmenuId === item.id;
         const rowClass = item.disabled
-          ? 'text-forge-text/35 cursor-default'
+          ? 'text-quebracho-text/35 cursor-default'
           : item.id === activeMenuItemId
-            ? 'text-forge-accent bg-forge-accent/15'
-            : 'text-forge-text-menu hover:bg-forge-accent/10 hover:text-forge-accent';
+            ? 'text-quebracho-accent bg-quebracho-accent/15'
+            : 'text-quebracho-text-menu hover:bg-quebracho-accent/10 hover:text-quebracho-accent';
 
         return (
           <div
@@ -647,13 +647,13 @@ export default function TitleBar() {
   );
 
   return (
-    <div className="h-[32px] bg-forge-titlebar flex items-center justify-between select-none drag-region border-b border-forge-border/40 relative">
+    <div className="h-[32px] bg-quebracho-titlebar flex items-center justify-between select-none drag-region border-b border-quebracho-border/40 relative">
       {/* Left: Logo + App name + Menu */}
       <div className="flex items-center h-full no-drag" ref={menuRootRef}>
         {/* Logo + Quebracho */}
         <div className="flex items-center gap-2 px-3 h-full">
           <img src={logoUrl} alt="Quebracho" className="h-[20px] w-auto object-contain" />
-          <span className="text-[13px] font-semibold text-forge-accent tracking-wide">Quebracho</span>
+          <span className="text-[13px] font-semibold text-quebracho-accent tracking-wide">Quebracho</span>
         </div>
 
         {/* Menu Items */}
@@ -682,8 +682,8 @@ export default function TitleBar() {
                   }}
                   className={`px-3 h-full transition-colors ${
                     isOpen
-                      ? 'text-forge-text-strong bg-white/8'
-                      : 'text-forge-text hover:text-forge-text-strong hover:bg-white/5'
+                      ? 'text-quebracho-text-strong bg-white/8'
+                      : 'text-quebracho-text hover:text-quebracho-text-strong hover:bg-white/5'
                   }`}
                 >
                   {renderMnemonicLabel(menuEntry.label, menuEntry.mnemonicIndex, mnemonicMode)}
@@ -701,7 +701,7 @@ export default function TitleBar() {
       </div>
 
       {/* Center: Workspace title */}
-      <div className="absolute left-1/2 -translate-x-1/2 text-[12px] text-forge-text/70 pointer-events-none">
+      <div className="absolute left-1/2 -translate-x-1/2 text-[12px] text-quebracho-text/70 pointer-events-none">
         {workspaceName ? `${workspaceName} — Quebracho` : 'Quebracho'}
       </div>
 
@@ -711,23 +711,23 @@ export default function TitleBar() {
           onClick={handleMinimize}
           className="w-[46px] h-full flex items-center justify-center hover:bg-white/10 transition-colors"
         >
-          <Minus size={16} className="text-forge-text" />
+          <Minus size={16} className="text-quebracho-text" />
         </button>
         <button
           onClick={handleMaximize}
           className="w-[46px] h-full flex items-center justify-center hover:bg-white/10 transition-colors"
         >
           {isMaximized ? (
-            <Copy size={12} className="text-forge-text" />
+            <Copy size={12} className="text-quebracho-text" />
           ) : (
-            <Square size={12} className="text-forge-text" />
+            <Square size={12} className="text-quebracho-text" />
           )}
         </button>
         <button
           onClick={handleClose}
           className="w-[46px] h-full flex items-center justify-center hover:bg-[#e81123] hover:text-white transition-colors"
         >
-          <X size={16} className="text-forge-text" />
+          <X size={16} className="text-quebracho-text" />
         </button>
       </div>
     </div>

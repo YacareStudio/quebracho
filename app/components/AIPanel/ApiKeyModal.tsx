@@ -35,6 +35,7 @@ export default function ApiKeyModal() {
   const [loadingModels, setLoadingModels] = useState(false);
   /** Provider currently shown in the "are you sure?" confirm-delete UI. */
   const [confirmDelete, setConfirmDelete] = useState<ProviderId | null>(null);
+  const keyringStatus = useStore((s) => s.aiKeyringStatus);
 
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -170,14 +171,14 @@ export default function ApiKeyModal() {
       onClick={close}
     >
       <div
-        className="w-[520px] max-h-[80vh] bg-forge-sidebar border border-forge-border rounded-md shadow-2xl flex flex-col"
+        className="w-[520px] max-h-[80vh] bg-quebracho-sidebar border border-quebracho-border rounded-md shadow-2xl flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-forge-border">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-quebracho-border">
           <div className="flex items-center gap-2">
-            <KeyRound size={16} className="text-forge-accent" />
-            <h2 className="text-forge-text-strong text-sm font-medium">
+            <KeyRound size={16} className="text-quebracho-accent" />
+            <h2 className="text-quebracho-text-strong text-sm font-medium">
               {configuredProviders.length > 0
                 ? t(uiLanguage, 'aiPanel.modalManageProviders')
                 : t(uiLanguage, 'aiPanel.modalConfigureProvider')}
@@ -185,7 +186,7 @@ export default function ApiKeyModal() {
           </div>
           <button
             onClick={close}
-            className="text-forge-text hover:text-forge-text-strong"
+            className="text-quebracho-text hover:text-quebracho-text-strong"
             title={t(uiLanguage, 'settings.close')}
           >
             <X size={16} />
@@ -197,10 +198,10 @@ export default function ApiKeyModal() {
           {/* Configured providers — switch or delete already-saved keys */}
           {configuredProviders.length > 0 && (
             <div>
-              <label className="block text-xs text-forge-text-dim mb-2">
+              <label className="block text-xs text-quebracho-text-dim mb-2">
                 {t(uiLanguage, 'aiPanel.configuredProviders')}
               </label>
-              <div className="border border-forge-border rounded divide-y divide-forge-border/60 overflow-hidden">
+              <div className="border border-quebracho-border rounded divide-y divide-quebracho-border/60 overflow-hidden">
                 {configuredProviders.map((pid) => {
                   const info = providers.find((p) => p.id === pid);
                   const name = info?.name || pid;
@@ -209,15 +210,15 @@ export default function ApiKeyModal() {
                   return (
                     <div
                       key={pid}
-                      className="flex items-center justify-between px-3 py-2 bg-forge-input/30"
+                      className="flex items-center justify-between px-3 py-2 bg-quebracho-input/30"
                     >
                       <div className="flex items-center gap-2 min-w-0">
-                        <Check size={12} className="text-forge-accent flex-shrink-0" />
-                        <span className="text-[13px] text-forge-text-strong truncate">
+                        <Check size={12} className="text-quebracho-accent flex-shrink-0" />
+                        <span className="text-[13px] text-quebracho-text-strong truncate">
                           {name}
                         </span>
                         {isActive && (
-                          <span className="text-[10px] uppercase tracking-wide text-forge-accent border border-forge-accent/40 rounded px-1.5 py-0.5 flex-shrink-0">
+                          <span className="text-[10px] uppercase tracking-wide text-quebracho-accent border border-quebracho-accent/40 rounded px-1.5 py-0.5 flex-shrink-0">
                             {t(uiLanguage, 'aiPanel.active')}
                           </span>
                         )}
@@ -226,7 +227,7 @@ export default function ApiKeyModal() {
                         {!isActive && (
                           <button
                             onClick={() => setSelectedProvider(pid)}
-                            className="text-[11px] text-forge-text-dim hover:text-forge-accent"
+                            className="text-[11px] text-quebracho-text-dim hover:text-quebracho-accent"
                             title={t(uiLanguage, 'aiPanel.useProviderInForm', { name })}
                           >
                             {t(uiLanguage, 'aiPanel.select')}
@@ -245,7 +246,7 @@ export default function ApiKeyModal() {
                             </button>
                             <button
                               onClick={() => setConfirmDelete(null)}
-                              className="text-[11px] px-2 py-0.5 rounded text-forge-text-dim hover:text-forge-text-strong"
+                              className="text-[11px] px-2 py-0.5 rounded text-quebracho-text-dim hover:text-quebracho-text-strong"
                             >
                               {t(uiLanguage, 'aiPanel.no')}
                             </button>
@@ -254,7 +255,7 @@ export default function ApiKeyModal() {
                           <button
                             onClick={() => setConfirmDelete(pid)}
                             title={t(uiLanguage, 'aiPanel.deleteApiKey', { name })}
-                            className="h-6 w-6 rounded flex items-center justify-center text-forge-text-dim hover:text-red-400 hover:bg-red-500/10"
+                            className="h-6 w-6 rounded flex items-center justify-center text-quebracho-text-dim hover:text-red-400 hover:bg-red-500/10"
                           >
                             <Trash2 size={13} />
                           </button>
@@ -264,7 +265,7 @@ export default function ApiKeyModal() {
                   );
                 })}
               </div>
-              <p className="mt-2 text-[11px] text-forge-text-dim leading-relaxed">
+              <p className="mt-2 text-[11px] text-quebracho-text-dim leading-relaxed">
                 {t(uiLanguage, 'aiPanel.deleteApiKeyHelp')}
               </p>
             </div>
@@ -272,7 +273,7 @@ export default function ApiKeyModal() {
 
           {/* Provider grid */}
           <div>
-            <label className="block text-xs text-forge-text-dim mb-2">
+            <label className="block text-xs text-quebracho-text-dim mb-2">
               {configuredProviders.length > 0
                 ? t(uiLanguage, 'aiPanel.addOrUpdateKey')
                 : t(uiLanguage, 'aiPanel.provider')}
@@ -287,18 +288,18 @@ export default function ApiKeyModal() {
                     onClick={() => setSelectedProvider(p.id)}
                     className={`relative text-left px-3 py-2 rounded border transition-colors
                       ${isSelected
-                        ? 'border-forge-accent bg-forge-accent/10 text-forge-text-strong'
-                        : 'border-forge-border bg-forge-input/40 text-forge-text hover:bg-forge-input'}
+                        ? 'border-quebracho-accent bg-quebracho-accent/10 text-quebracho-text-strong'
+                        : 'border-quebracho-border bg-quebracho-input/40 text-quebracho-text hover:bg-quebracho-input'}
                     `}
                   >
                     <div className="text-[13px] font-medium flex items-center gap-1.5">
                       {p.name}
                       {isConfigured && (
-                        <Check size={12} className="text-forge-accent" />
+                        <Check size={12} className="text-quebracho-accent" />
                       )}
                     </div>
                     {p.hint && (
-                      <div className="text-[11px] text-forge-text-dim mt-0.5">
+                      <div className="text-[11px] text-quebracho-text-dim mt-0.5">
                         {p.hint}
                       </div>
                     )}
@@ -306,11 +307,16 @@ export default function ApiKeyModal() {
                 );
               })}
             </div>
+            {selectedProvider && (
+              <div className="mt-2 text-[11px] text-quebracho-text-dim">
+                {providers.find((p) => p.id === selectedProvider)?.hint}
+              </div>
+            )}
           </div>
 
           {/* API key input */}
           <div>
-            <label className="block text-xs text-forge-text-dim mb-1">
+            <label className="block text-xs text-quebracho-text-dim mb-1">
               {t(uiLanguage, 'aiPanel.apiKey')}
             </label>
             <div className="flex gap-2">
@@ -323,22 +329,44 @@ export default function ApiKeyModal() {
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !saving) handleSaveKey();
                 }}
-                className="forge-input flex-1"
+                className="quebracho-input flex-1"
               />
               <button
                 onClick={handleSaveKey}
                 disabled={saving || !selectedProvider || !apiKey.trim()}
                 className={`px-3 rounded text-[13px] font-medium transition-colors
                   ${saving || !selectedProvider || !apiKey.trim()
-                    ? 'bg-forge-input/60 text-forge-text-dim cursor-not-allowed'
-                    : 'bg-forge-accent text-black hover:opacity-90'}
+                    ? 'bg-quebracho-input/60 text-quebracho-text-dim cursor-not-allowed'
+                    : 'bg-quebracho-accent text-black hover:opacity-90'}
                 `}
               >
                 {saving ? t(uiLanguage, 'aiPanel.saving') : t(uiLanguage, 'aiPanel.saveAndListModels')}
               </button>
             </div>
-            <p className="mt-2 text-[11px] text-forge-text-dim leading-relaxed">
-              {t(uiLanguage, 'aiPanel.keyStoredLocally')}
+            <div className="mt-2 flex items-center gap-2">
+              {keyringStatus === 'os' && (
+                <span className="inline-flex items-center gap-1 text-[11px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 rounded px-2 py-0.5">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                  </svg>
+                  {t(uiLanguage, 'aiPanel.keyringStatus.os')}
+                </span>
+              )}
+              {keyringStatus === 'local' && (
+                <span className="inline-flex items-center gap-1 text-[11px] text-amber-400 bg-amber-500/10 border border-amber-500/30 rounded px-2 py-0.5">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                  </svg>
+                  {t(uiLanguage, 'aiPanel.keyringStatus.local')}
+                </span>
+              )}
+            </div>
+            <p className="mt-2 text-[11px] text-quebracho-text-dim leading-relaxed">
+              {keyringStatus === 'os'
+                ? t(uiLanguage, 'aiPanel.keyStored')
+                : t(uiLanguage, 'aiPanel.keyStoredLocally')}
             </p>
           </div>
 
@@ -352,11 +380,11 @@ export default function ApiKeyModal() {
           {/* Model selection */}
           {(loadingModels || models.length > 0) && (
             <div>
-              <label className="block text-xs text-forge-text-dim mb-1">
+              <label className="block text-xs text-quebracho-text-dim mb-1">
                 {t(uiLanguage, 'aiPanel.model')}
               </label>
               {loadingModels ? (
-                <div className="flex items-center gap-2 text-forge-text-dim text-[12px]">
+                <div className="flex items-center gap-2 text-quebracho-text-dim text-[12px]">
                   <Loader2 size={14} className="animate-spin" />
                   {t(uiLanguage, 'aiPanel.fetchingModels')}
                 </div>
@@ -364,10 +392,10 @@ export default function ApiKeyModal() {
                 <select
                   value={selectedModel}
                   onChange={(e) => setSelectedModel(e.target.value)}
-                  className="forge-input w-full"
+                  className="quebracho-input w-full"
                 >
                   {models.map((m) => (
-                    <option key={m} value={m} className="bg-forge-sidebar">
+                    <option key={m} value={m} className="bg-quebracho-sidebar">
                       {m}
                     </option>
                   ))}
@@ -378,10 +406,10 @@ export default function ApiKeyModal() {
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-2 px-4 py-3 border-t border-forge-border">
+        <div className="flex items-center justify-end gap-2 px-4 py-3 border-t border-quebracho-border">
           <button
             onClick={close}
-            className="px-3 py-1.5 text-[12px] text-forge-text hover:text-forge-text-strong"
+            className="px-3 py-1.5 text-[12px] text-quebracho-text hover:text-quebracho-text-strong"
           >
             {t(uiLanguage, 'aiPanel.cancel')}
           </button>
@@ -390,8 +418,8 @@ export default function ApiKeyModal() {
             disabled={!selectedProvider || !selectedModel}
             className={`px-3 py-1.5 rounded text-[12px] font-medium transition-colors
               ${!selectedProvider || !selectedModel
-                ? 'bg-forge-input/60 text-forge-text-dim cursor-not-allowed'
-                : 'bg-forge-accent text-black hover:opacity-90'}
+                ? 'bg-quebracho-input/60 text-quebracho-text-dim cursor-not-allowed'
+                : 'bg-quebracho-accent text-black hover:opacity-90'}
             `}
           >
             {t(uiLanguage, 'aiPanel.activate')}

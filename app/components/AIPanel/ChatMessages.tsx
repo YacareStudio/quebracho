@@ -48,7 +48,7 @@ function LiveWriteView({
 }) {
   return (
     <div
-      className="flex items-center gap-2 px-2.5 py-1.5 rounded text-[12px] border border-forge-accent/40"
+      className="flex items-center gap-2 px-2.5 py-1.5 rounded text-[12px] border border-quebracho-accent/40"
       style={{
         background: done
           ? 'rgba(74, 219, 148, 0.06)'
@@ -61,9 +61,9 @@ function LiveWriteView({
       </span>
       <span className="flex-shrink-0 inline-flex">
         {done ? (
-          <Check size={13} className="text-forge-accent" />
+          <Check size={13} className="text-quebracho-accent" />
         ) : (
-          <Loader2 size={13} className="animate-spin text-forge-accent" />
+          <Loader2 size={13} className="animate-spin text-quebracho-accent" />
         )}
       </span>
       <span className="truncate">
@@ -83,7 +83,7 @@ function ToolCallView({ tool }: { tool: AIToolCall }) {
   let statusText = tool.statusLabel;
 
   if (!tool.done) {
-    icon = <Loader2 size={13} className="animate-spin text-forge-accent" />;
+    icon = <Loader2 size={13} className="animate-spin text-quebracho-accent" />;
   } else if (tool.rejected) {
     icon = <Ban size={13} className="text-red-400" />;
     textColor = '#FFB3B3';
@@ -98,7 +98,7 @@ function ToolCallView({ tool }: { tool: AIToolCall }) {
       error: tool.error,
     });
   } else {
-    icon = <Check size={13} className="text-forge-accent" />;
+    icon = <Check size={13} className="text-quebracho-accent" />;
     bg = 'rgba(74, 219, 148, 0.06)';
     if (tool.name === 'escribir_archivo') {
       const path = tool.paths?.[0] || tool.args.ruta;
@@ -123,7 +123,7 @@ function ToolCallView({ tool }: { tool: AIToolCall }) {
 
   return (
     <div
-      className="flex items-center gap-2 px-2.5 py-1.5 rounded text-[12px] border border-forge-border/60"
+      className="flex items-center gap-2 px-2.5 py-1.5 rounded text-[12px] border border-quebracho-border/60"
       style={{ background: bg, color: textColor }}
     >
       <span className="flex-shrink-0 inline-flex">
@@ -139,8 +139,8 @@ function MessageBubble({ message }: { message: AIMessage }) {
   const uiLanguage = useStore((s) => s.uiLanguage);
   if (message.role === 'system') {
     return (
-      <div className="flex gap-2 items-start text-[12px] text-forge-text-dim border border-forge-border/50 rounded px-3 py-2 bg-forge-input/30">
-        <Info size={13} className="flex-shrink-0 mt-0.5 text-forge-accent" />
+      <div className="flex gap-2 items-start text-[12px] text-quebracho-text-dim border border-quebracho-border/50 rounded px-3 py-2 bg-quebracho-input/30">
+        <Info size={13} className="flex-shrink-0 mt-0.5 text-quebracho-accent" />
         <p className="whitespace-pre-wrap leading-relaxed">{message.content}</p>
       </div>
     );
@@ -149,12 +149,12 @@ function MessageBubble({ message }: { message: AIMessage }) {
   if (message.role === 'user') {
     return (
       <div className="flex flex-col items-end gap-1">
-        <div className="flex items-center gap-1.5 text-[11px] text-forge-text-dim">
+        <div className="flex items-center gap-1.5 text-[11px] text-quebracho-text-dim">
           <User size={11} />
           {t(uiLanguage, 'aiPanel.you')}
         </div>
         <div
-          className="max-w-[90%] px-3 py-2 rounded-md text-[13px] text-forge-text-strong border border-forge-border"
+          className="max-w-[90%] px-3 py-2 rounded-md text-[13px] text-quebracho-text-strong border border-quebracho-border"
           style={{ background: 'rgba(74, 219, 148, 0.08)' }}
         >
           <p className="whitespace-pre-wrap break-words leading-relaxed">
@@ -168,15 +168,15 @@ function MessageBubble({ message }: { message: AIMessage }) {
   // Assistant
   return (
     <div className="flex flex-col gap-1">
-      <div className="flex items-center gap-1.5 text-[11px] text-forge-text-dim">
-        <Bot size={11} className="text-forge-accent" />
+      <div className="flex items-center gap-1.5 text-[11px] text-quebracho-text-dim">
+        <Bot size={11} className="text-quebracho-accent" />
         Forge
       </div>
       {(message.content || message.streaming) && (
-        <div className="text-[13px] text-forge-text leading-relaxed whitespace-pre-wrap break-words">
+        <div className="text-[13px] text-quebracho-text leading-relaxed whitespace-pre-wrap break-words">
           {message.content}
           {message.streaming && (
-            <span className="inline-block w-[7px] h-[14px] bg-forge-accent ml-0.5 align-text-bottom animate-pulse" />
+            <span className="inline-block w-[7px] h-[14px] bg-quebracho-accent ml-0.5 align-text-bottom animate-pulse" />
           )}
         </div>
       )}
@@ -241,8 +241,8 @@ export default function ChatMessages() {
         status === 'initializing' ||
         status === 'awaiting_diff') &&
         statusText && (
-          <div className="flex items-center gap-2 text-[11px] text-forge-text-dim italic">
-            <Loader2 size={11} className="animate-spin text-forge-accent" />
+          <div className="flex items-center gap-2 text-[11px] text-quebracho-text-dim italic">
+            <Loader2 size={11} className="animate-spin text-quebracho-accent" />
             {statusText}
           </div>
         )}

@@ -292,7 +292,7 @@ class LspClient {
       await window.forgeAPI.lsp.start(workspacePath);
       this.workspaceStarted = true;
     } catch (err) {
-      console.warn('[forge:lsp] start failed:', (err as Error)?.message);
+      console.warn('[quebracho:lsp] start failed:', (err as Error)?.message);
       this.workspaceStarted = false;
     }
   }
@@ -305,7 +305,7 @@ class LspClient {
     try {
       await window.forgeAPI.lsp.stop();
     } catch (err) {
-      console.debug('[forge:lsp] stop failed:', (err as Error)?.message);
+      console.debug('[quebracho:lsp] stop failed:', (err as Error)?.message);
     }
   }
 
@@ -447,7 +447,7 @@ class LspClient {
         context: { triggerKind: 1 }, // Invoked
       });
     } catch (err) {
-      console.debug('[forge:lsp] completion request failed:', (err as Error)?.message);
+      console.debug('[quebracho:lsp] completion request failed:', (err as Error)?.message);
       return undefined;
     }
     if (!result) return undefined;
@@ -488,7 +488,7 @@ class LspClient {
         position: { line: position.lineNumber - 1, character: position.column - 1 },
       });
     } catch (err) {
-      console.debug('[forge:lsp] hover request failed:', (err as Error)?.message);
+      console.debug('[quebracho:lsp] hover request failed:', (err as Error)?.message);
       return undefined;
     }
     if (!result || !result.contents) return undefined;

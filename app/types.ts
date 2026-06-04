@@ -350,6 +350,7 @@ export interface ForgeAPI {
       configuredProviders: ProviderId[];
       activeProvider: ProviderId | null;
       activeModel: string | null;
+      keyringStatus?: 'os' | 'local';
     }>;
     setApiKey: (provider: ProviderId, apiKey: string) => Promise<boolean>;
     removeApiKey: (provider: ProviderId) => Promise<boolean>;
@@ -367,16 +368,16 @@ export interface ForgeAPI {
       callback: (event: 'delta' | 'done' | 'error', data: any) => void,
     ) => TerminalDisposable;
   };
-  // ── Forge per-project metadata (.forge/) ────────────────────────────
-  forge: {
+  // ── Forge per-project metadata (.quebracho/) ────────────────────────────
+  quebracho: {
     /** Returns the parsed history.json messages or `null` if it doesn't
      *  exist (i.e. /init has not been run in this workspace). */
     readHistory: (workspacePath: string) => Promise<AIMessage[] | null>;
-    /** Atomically writes `.forge/history.json`. */
+    /** Atomically writes `.quebracho/history.json`. */
     writeHistory: (workspacePath: string, messages: AIMessage[]) => Promise<boolean>;
-    /** Creates `.forge/` and an empty `history.json` if absent. */
+    /** Creates `.quebracho/` and an empty `history.json` if absent. */
     ensureForgeDir: (workspacePath: string) => Promise<boolean>;
-    /** Whether `.forge/history.json` already exists. */
+    /** Whether `.quebracho/history.json` already exists. */
     hasHistory: (workspacePath: string) => Promise<boolean>;
   };
   agent: {

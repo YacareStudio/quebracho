@@ -9,7 +9,7 @@ use quebracho_lib::commands::lsp::*;
 use quebracho_lib::commands::settings::*;
 use quebracho_lib::commands::terminal::*;
 use quebracho_lib::state::{AiState, LiveServerState, LspState, TerminalState, WorkspaceState};
-use quebracho_lib::storage::{JsonPrefsStore, JsonSecretsStore, migrate_old_config};
+use quebracho_lib::storage::{JsonPrefsStore, build_secrets_store, migrate_old_config};
 use quebracho_lib::utils::app_config_path;
 use std::sync::Mutex;
 use tauri::Manager;
@@ -83,11 +83,11 @@ fn main() {
             let config_path = app_config_path(app.handle())?;
             let secrets_path = config_path.with_file_name("quebracho-secrets.json");
 
-            // Initialize secrets store first so migration can write into it
-            let secrets = JsonSecretsStore::new(secrets_path.clone());
+            // Initialize secrets store (OS keychain preferred, JSON fallback)
+            let secrets = build_secrets_store(secrets_path.clone());
 
             // Run one-time migration: move ai_keys from config to secrets store
-            let _ = migrate_old_config(&config_path, &secrets);
+            let _ = migrate_old_config(&config_path, secrets.as_ref());
 
             // Initialize prefs store
             let prefs = JsonPrefsStore::new(config_path.clone());

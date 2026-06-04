@@ -301,7 +301,7 @@ export default function App() {
     return () => disposable.dispose();
   }, [openFolder]);
 
-  // Persist the AI conversation to `.forge/history.json` on every change,
+  // Persist the AI conversation to `.quebracho/history.json` on every change,
   // debounced so quick stream updates don't thrash the disk. The store
   // action no-ops when the workspace hasn't been /init-ed yet.
   useEffect(() => {
@@ -413,7 +413,7 @@ export default function App() {
 
   return (
     <div
-      className="w-screen h-screen grid bg-forge-bg text-forge-text text-[13px]"
+      className="w-screen h-screen grid bg-quebracho-bg text-quebracho-text text-[13px]"
       style={{
         gridTemplateRows: `32px ${activityBarVisible ? '40px' : '0px'} 1fr ${statusBarVisible ? '22px' : '0px'}`,
         gridTemplateColumns,

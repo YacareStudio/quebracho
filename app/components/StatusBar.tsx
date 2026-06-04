@@ -37,7 +37,7 @@ export default function StatusBar() {
       {/* Left */}
       <div className="flex items-center gap-3">
         {workspacePath && (
-          <div className="flex items-center gap-1 hover:text-forge-text-strong transition-colors cursor-default">
+          <div className="flex items-center gap-1 hover:text-quebracho-text-strong transition-colors cursor-default">
             <GitBranch size={12} />
             <span>main</span>
           </div>
@@ -45,7 +45,7 @@ export default function StatusBar() {
 
         <button
           onClick={togglePanel}
-          className="flex items-center gap-1 hover:text-forge-text-strong px-1 rounded transition-colors"
+          className="flex items-center gap-1 hover:text-quebracho-text-strong px-1 rounded transition-colors"
         >
           <AlertCircle size={12} />
           <span>0</span>
@@ -56,7 +56,7 @@ export default function StatusBar() {
         <button
           onClick={() => toggleLiveServer()}
           title={liveServerTitle}
-          className="flex items-center gap-1 hover:text-forge-text-strong px-1 rounded transition-colors"
+          className="flex items-center gap-1 hover:text-quebracho-text-strong px-1 rounded transition-colors"
         >
           <Globe size={12} style={{ color: liveServerColor }} />
           <span
@@ -87,7 +87,7 @@ export default function StatusBar() {
           </>
         )}
 
-        <button className="flex items-center hover:text-forge-text-strong px-1 rounded transition-colors">
+        <button className="flex items-center hover:text-quebracho-text-strong px-1 rounded transition-colors">
           <Bell size={12} />
         </button>
       </div>

@@ -370,7 +370,7 @@ const bridge: ForgeAPI = {
     },
   },
 
-  forge: {
+  quebracho: {
     readHistory: (workspacePath) => invoke('forge_read_history', { workspacePath }),
     writeHistory: (workspacePath, messages) => invoke('forge_write_history', { workspacePath, messages }),
     ensureForgeDir: (workspacePath) => invoke('forge_ensure_forge_dir', { workspacePath }),

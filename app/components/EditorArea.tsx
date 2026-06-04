@@ -67,31 +67,31 @@ function WelcomeScreen() {
   const uiLanguage = useStore((s) => s.uiLanguage);
 
   return (
-    <div className="w-full h-full flex flex-col items-center justify-center bg-forge-editor gap-6 select-none">
+    <div className="w-full h-full flex flex-col items-center justify-center bg-quebracho-editor gap-6 select-none">
       <img src={logoUrl} alt="Quebracho" className="w-[88px] h-[88px] object-contain opacity-60" />
       <div className="flex flex-col items-center gap-1">
-        <h1 className="text-3xl font-light text-forge-text-strong/70 tracking-wide">Quebracho</h1>
-        <p className="text-[12px] text-forge-text/45">{t(uiLanguage, 'welcome.byline')}</p>
+        <h1 className="text-3xl font-light text-quebracho-text-strong/70 tracking-wide">Quebracho</h1>
+        <p className="text-[12px] text-quebracho-text/45">{t(uiLanguage, 'welcome.byline')}</p>
       </div>
       <div className="flex flex-col items-center gap-3 text-sm">
-        <p className="text-forge-text/50">{t(uiLanguage, 'welcome.start')}</p>
+        <p className="text-quebracho-text/50">{t(uiLanguage, 'welcome.start')}</p>
         <button
           onClick={() => openFolder()}
-          className="text-forge-accent hover:underline cursor-pointer"
+          className="text-quebracho-accent hover:underline cursor-pointer"
         >
           {t(uiLanguage, 'welcome.openFolder')}
         </button>
-        <div className="flex flex-col items-center gap-1 mt-4 text-forge-text/40 text-xs">
+        <div className="flex flex-col items-center gap-1 mt-4 text-quebracho-text/40 text-xs">
           <p>
-            <kbd className="px-1.5 py-0.5 bg-forge-input rounded text-forge-text/70">Ctrl+Shift+P</kbd>{' '}
+            <kbd className="px-1.5 py-0.5 bg-quebracho-input rounded text-quebracho-text/70">Ctrl+Shift+P</kbd>{' '}
             {t(uiLanguage, 'welcome.commandPalette')}
           </p>
           <p>
-            <kbd className="px-1.5 py-0.5 bg-forge-input rounded text-forge-text/70">Ctrl+B</kbd>{' '}
+            <kbd className="px-1.5 py-0.5 bg-quebracho-input rounded text-quebracho-text/70">Ctrl+B</kbd>{' '}
             {t(uiLanguage, 'welcome.toggleSidebar')}
           </p>
           <p>
-            <kbd className="px-1.5 py-0.5 bg-forge-input rounded text-forge-text/70">Ctrl+`</kbd>{' '}
+            <kbd className="px-1.5 py-0.5 bg-quebracho-input rounded text-quebracho-text/70">Ctrl+`</kbd>{' '}
             {t(uiLanguage, 'welcome.toggleTerminal')}
           </p>
         </div>
@@ -104,10 +104,10 @@ function EmptyWorkspacePlaceholder() {
   const uiLanguage = useStore((s) => s.uiLanguage);
 
   return (
-    <div className="w-full h-full flex items-center justify-center bg-forge-editor select-none">
-      <div className="px-6 py-5 rounded-md border border-forge-border/70 bg-forge-sidebar/35 text-center max-w-[460px]">
-        <p className="text-[14px] text-forge-text-strong/85 mb-2">{t(uiLanguage, 'welcome.workspaceReadyTitle')}</p>
-        <p className="text-[12px] text-forge-text/60">{t(uiLanguage, 'welcome.workspaceReadyBody')}</p>
+    <div className="w-full h-full flex items-center justify-center bg-quebracho-editor select-none">
+      <div className="px-6 py-5 rounded-md border border-quebracho-border/70 bg-quebracho-sidebar/35 text-center max-w-[460px]">
+        <p className="text-[14px] text-quebracho-text-strong/85 mb-2">{t(uiLanguage, 'welcome.workspaceReadyTitle')}</p>
+        <p className="text-[12px] text-quebracho-text/60">{t(uiLanguage, 'welcome.workspaceReadyBody')}</p>
       </div>
     </div>
   );
@@ -125,7 +125,7 @@ function TabBar() {
   if (openTabs.length === 0) return null;
 
   return (
-    <div className="h-[35px] bg-forge-tabbar flex items-end overflow-x-auto select-none">
+    <div className="h-[35px] bg-quebracho-tabbar flex items-end overflow-x-auto select-none">
       {openTabs.map((tab) => {
         const isActive = tab.id === activeTabId;
         return (
@@ -134,12 +134,12 @@ function TabBar() {
             onClick={() => setActiveTab(tab.id)}
             className={`group flex items-center h-[35px] px-3 gap-2 cursor-pointer min-w-0 max-w-[220px] border-r border-black/30 transition-colors
               ${isActive
-                ? 'bg-forge-tab-active'
-                : 'bg-forge-tabbar hover:bg-white/[0.03]'}
+                ? 'bg-quebracho-tab-active'
+                : 'bg-quebracho-tabbar hover:bg-white/[0.03]'}
             `}
           >
             {tab.isUnsaved && (
-              <div className="w-[7px] h-[7px] rounded-full bg-forge-text/70 flex-shrink-0" />
+              <div className="w-[7px] h-[7px] rounded-full bg-quebracho-text/70 flex-shrink-0" />
             )}
 
             <span
@@ -169,7 +169,7 @@ function TabBar() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// Custom Monaco Theme — "forge-dark"
+// Custom Monaco Theme — "quebracho-dark"
 // ─────────────────────────────────────────────────────────────────────────
 function defineForgeTheme(monaco: typeof import('monaco-editor')) {
   defineMonacoThemes(monaco);
@@ -217,7 +217,7 @@ function MonacoWrapper() {
       });
     } catch (err) {
       // eslint-disable-next-line no-console
-      console.debug('[forge] Monaco TS diagnostics setup skipped:', (err as Error)?.message);
+      console.debug('[quebracho] Monaco TS diagnostics setup skipped:', (err as Error)?.message);
     }
 
     // Wire the LSP client into Monaco. attachMonaco is idempotent — it
@@ -225,7 +225,7 @@ function MonacoWrapper() {
     try {
       lspClient.attachMonaco(monaco);
     } catch (err) {
-      console.warn('[forge] LSP attach failed:', (err as Error)?.message);
+      console.warn('[quebracho] LSP attach failed:', (err as Error)?.message);
     }
   }, []);
 
@@ -315,8 +315,8 @@ function MonacoWrapper() {
       ed.pushUndoStop();
     };
 
-    window.addEventListener('forge:editor-command', onEditorCommand);
-    return () => window.removeEventListener('forge:editor-command', onEditorCommand);
+    window.addEventListener('quebracho:editor-command', onEditorCommand);
+    return () => window.removeEventListener('quebracho:editor-command', onEditorCommand);
   }, [activeTab]);
 
   const handleChange = useCallback(
@@ -408,7 +408,7 @@ function MonacoWrapper() {
   }
 
   return (
-    <div className="w-full h-full bg-forge-editor">
+    <div className="w-full h-full bg-quebracho-editor">
       <Editor
         key={activeTab.id}
         // path becomes part of the Monaco model URI so completion / hover
@@ -453,7 +453,7 @@ function MonacoWrapper() {
 // ─────────────────────────────────────────────────────────────────────────
 export default function EditorArea() {
   return (
-    <div className="w-full h-full flex flex-col bg-forge-editor">
+    <div className="w-full h-full flex flex-col bg-quebracho-editor">
       <TabBar />
       <div className="flex-1 overflow-hidden">
         <MonacoWrapper />

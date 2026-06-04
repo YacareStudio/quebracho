@@ -100,7 +100,7 @@ pub fn app_config_path(app: &AppHandle) -> Result<PathBuf, String> {
 
 pub fn load_app_config(path: &Path) -> AppConfig {
     if !path.exists() {
-        let legacy_path = path.with_file_name("forge-config.json");
+        let legacy_path = path.with_file_name("quebracho-config.json");
         if legacy_path.exists() {
             return match fs::read_to_string(legacy_path) {
                 Ok(raw) => serde_json::from_str(&raw).unwrap_or_default(),

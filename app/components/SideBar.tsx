@@ -128,7 +128,7 @@ function ContextMenu({
           >
             <Globe
               size={13}
-              className={isServingThisFile ? 'text-forge-accent' : 'text-forge-text/70'}
+              className={isServingThisFile ? 'text-quebracho-accent' : 'text-quebracho-text/70'}
             />
             <span>{liveServerLabel}</span>
           </div>
@@ -371,14 +371,14 @@ function NewItemInput({
       <span className="w-[14px] mr-0.5 flex-shrink-0" />
       <span className="mr-1.5 flex-shrink-0 inline-flex items-center">
         {type === 'folder' ? (
-          <Folder size={15} className="text-forge-accent" />
+          <Folder size={15} className="text-quebracho-accent" />
         ) : (
-          <File size={14} className="text-forge-accent" />
+          <File size={14} className="text-quebracho-accent" />
         )}
       </span>
       <input
         ref={ref}
-        className="flex-1 bg-forge-input text-forge-text text-[13px] px-1.5 py-0.5 border border-forge-accent outline-none rounded-sm"
+        className="flex-1 bg-quebracho-input text-quebracho-text text-[13px] px-1.5 py-0.5 border border-quebracho-accent outline-none rounded-sm"
         placeholder={type === 'file' ? t(uiLanguage, 'explorer.fileNamePlaceholder') : t(uiLanguage, 'explorer.folderNamePlaceholder')}
         value={val}
         autoFocus
@@ -454,11 +454,11 @@ function RenameInput({
     >
       <span className="w-[14px] mr-0.5 flex-shrink-0" />
       <span className="mr-1.5 flex-shrink-0 inline-flex items-center">
-        <File size={14} className="text-forge-accent" />
+        <File size={14} className="text-quebracho-accent" />
       </span>
       <input
         ref={ref}
-        className="flex-1 bg-forge-input text-forge-text text-[13px] px-1.5 py-0.5 border border-forge-accent outline-none rounded-sm"
+        className="flex-1 bg-quebracho-input text-quebracho-text text-[13px] px-1.5 py-0.5 border border-quebracho-accent outline-none rounded-sm"
         value={val}
         autoFocus
         spellCheck={false}
@@ -727,11 +727,11 @@ function ExplorerPanel() {
 
   if (!workspacePath) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center gap-3 px-4 text-forge-text">
+      <div className="flex-1 flex flex-col items-center justify-center gap-3 px-4 text-quebracho-text">
         <p className="text-sm text-center">{t(uiLanguage, 'explorer.noFolderOpened')}</p>
         <button
           onClick={() => openFolder()}
-          className="px-4 py-1.5 bg-forge-accent text-[#1F2025] text-sm font-semibold rounded hover:opacity-90 transition-opacity"
+          className="px-4 py-1.5 bg-quebracho-accent text-[#1F2025] text-sm font-semibold rounded hover:opacity-90 transition-opacity"
         >
           {t(uiLanguage, 'explorer.openFolder')}
         </button>
@@ -742,7 +742,7 @@ function ExplorerPanel() {
   return (
     <div className="flex flex-col h-full relative">
       {/* Top bar: folder name + add button */}
-      <div className="flex items-center justify-between h-[36px] px-3 border-b border-forge-border/40">
+      <div className="flex items-center justify-between h-[36px] px-3 border-b border-quebracho-border/40">
         <button
           title={workspacePath ?? undefined}
           onContextMenu={(e) => {
@@ -750,7 +750,7 @@ function ExplorerPanel() {
             e.stopPropagation();
             setHeaderCtxMenu({ x: e.clientX, y: e.clientY });
           }}
-          className="flex items-center gap-1 text-forge-accent text-[13px] font-semibold uppercase tracking-wide truncate"
+          className="flex items-center gap-1 text-quebracho-accent text-[13px] font-semibold uppercase tracking-wide truncate"
         >
           <span className="truncate">{folderDisplayName}</span>
           <ChevronDown size={14} className="flex-shrink-0" />
@@ -761,7 +761,7 @@ function ExplorerPanel() {
           title={t(uiLanguage, 'explorer.newEllipsis')}
           className="p-1 rounded hover:bg-white/5 transition-colors"
         >
-          <Plus size={16} className="text-forge-accent" />
+          <Plus size={16} className="text-quebracho-accent" />
         </button>
 
         {dropdownOpen && (
@@ -850,10 +850,10 @@ function CollapsibleSection({
 }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <div className="border-t border-forge-border/40">
+    <div className="border-t border-quebracho-border/40">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center gap-1 px-3 h-[28px] text-[11px] font-semibold uppercase tracking-wider text-forge-text hover:text-forge-text-strong transition-colors"
+        className="w-full flex items-center gap-1 px-3 h-[28px] text-[11px] font-semibold uppercase tracking-wider text-quebracho-text hover:text-quebracho-text-strong transition-colors"
       >
         {open ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
         <span className="ml-1 inline-flex items-center gap-1.5">
@@ -862,7 +862,7 @@ function CollapsibleSection({
         </span>
       </button>
       {open && (
-        <div className="px-3 py-2 text-[12px] text-forge-text/60 max-h-[140px] overflow-y-auto sidebar-scroll">
+        <div className="px-3 py-2 text-[12px] text-quebracho-text/60 max-h-[140px] overflow-y-auto sidebar-scroll">
           {children}
         </div>
       )}
@@ -890,10 +890,10 @@ function BottomSections() {
 function PlaceholderPanel({ icon, title }: { icon: React.ReactNode; title: string }) {
   const uiLanguage = useStore((s) => s.uiLanguage);
   return (
-    <div className="flex-1 flex flex-col items-center justify-center gap-3 text-forge-text">
+    <div className="flex-1 flex flex-col items-center justify-center gap-3 text-quebracho-text">
       {icon}
       <p className="text-sm">{title}</p>
-      <p className="text-xs text-forge-text/60">{t(uiLanguage, 'explorer.comingSoon')}</p>
+      <p className="text-xs text-quebracho-text/60">{t(uiLanguage, 'explorer.comingSoon')}</p>
     </div>
   );
 }
@@ -923,7 +923,7 @@ export default function SideBar() {
   };
 
   return (
-    <div className="w-full h-full bg-forge-sidebar flex flex-col border-r border-forge-border/40 overflow-hidden">
+    <div className="w-full h-full bg-quebracho-sidebar flex flex-col border-r border-quebracho-border/40 overflow-hidden">
       <div className="flex-1 overflow-hidden flex flex-col">
         {renderTopArea()}
       </div>

@@ -1,13 +1,13 @@
 import type { ITheme as XtermTheme } from '@xterm/xterm';
 
-export type ColorThemeId = 'forge-dark' | 'aura-dark';
+export type ColorThemeId = 'quebracho-dark' | 'aura-dark';
 export type FileIconThemeId = 'classic' | 'material';
 
-export const DEFAULT_COLOR_THEME: ColorThemeId = 'forge-dark';
+export const DEFAULT_COLOR_THEME: ColorThemeId = 'quebracho-dark';
 export const DEFAULT_FILE_ICON_THEME: FileIconThemeId = 'material';
 
 export const colorThemeOptions: Array<{ value: ColorThemeId; labelKey: string }> = [
-  { value: 'forge-dark', labelKey: 'settings.themeForgeDark' },
+  { value: 'quebracho-dark', labelKey: 'settings.themeQuebrachoDark' },
   { value: 'aura-dark', labelKey: 'settings.themeAuraDark' },
 ];
 
@@ -17,7 +17,7 @@ export const fileIconThemeOptions: Array<{ value: FileIconThemeId; labelKey: str
 ];
 
 export function normalizeColorTheme(value: string | null | undefined): ColorThemeId {
-  return value === 'aura-dark' ? 'aura-dark' : 'forge-dark';
+  return value === 'aura-dark' ? 'aura-dark' : 'quebracho-dark';
 }
 
 export function normalizeFileIconTheme(value: string | null | undefined): FileIconThemeId {
@@ -25,7 +25,7 @@ export function normalizeFileIconTheme(value: string | null | undefined): FileIc
 }
 
 export function getMonacoThemeName(theme: ColorThemeId): string {
-  return theme === 'aura-dark' ? 'aura-dark' : 'forge-dark';
+  return theme === 'aura-dark' ? 'aura-dark' : 'quebracho-dark';
 }
 
 export function applyColorThemeToDocument(theme: ColorThemeId): void {
@@ -34,7 +34,7 @@ export function applyColorThemeToDocument(theme: ColorThemeId): void {
 }
 
 export function defineMonacoThemes(monaco: typeof import('monaco-editor')): void {
-  monaco.editor.defineTheme('forge-dark', {
+  monaco.editor.defineTheme('quebracho-dark', {
     base: 'vs-dark',
     inherit: true,
     rules: [
