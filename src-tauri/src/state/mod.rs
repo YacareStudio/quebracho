@@ -55,4 +55,7 @@ pub struct LiveServerState {
 #[derive(Default)]
 pub struct AiState {
     pub aborted_streams: std::collections::HashSet<String>,
+    /// Per-stream cancellation flags. Used by real SSE streaming to abort
+    /// mid-flight without tearing down the whole request.
+    pub stream_cancel_flags: std::collections::HashMap<String, std::sync::Arc<std::sync::atomic::AtomicBool>>,
 }

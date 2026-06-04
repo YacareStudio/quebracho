@@ -1,6 +1,7 @@
 use async_trait::async_trait;
-use crate::models::{ChatMessage, ChatResponse, ModelInfo, ProviderError};
+use crate::models::{ChatMessage, ChatResponse, ModelInfo, ProviderError, StreamChunk};
 use crate::providers::Provider;
+use futures::Stream;
 use serde_json::Value;
 
 pub struct GoogleProvider;
@@ -96,5 +97,58 @@ impl Provider for GoogleProvider {
             content,
             usage: body.get("usageMetadata").cloned(),
         })
+    }
+
+    async fn chat_stream(
+        &self,
+        model: &str,
+        api_key: &str,
+        messages: &[ChatMessage],
+        http: &reqwest::Client,
+    ) -> Result<std::pin::Pin<Box<dyn Stream<Item = Result<StreamChunk, ProviderError>> + Send>>, ProviderError> {
+        let url = format!(
+            "{}/v1beta/models/{}:streamGenerateContent?alt=sse&key={}",
+            self.base_url(), model, api_key
+        );
+
+        let contents: Vec<Value> = messages
+            .iter()
+            .filter(|m| m.role != "system")
+            .map(|m| {
+                serde_json::json!({
+                    "role": if m.role == "assistant" { "model" } else { "user" },
+                    "parts": [{ "text": m.content }]
+                })
+            })
+            .collect();
+
+        let resp = http
+            .post(&url)
+            .json(&serde_json::json!({ "contents": contents }))
+            .header("Accept", "text/event-stream")
+            .send()
+            .await?;
+
+        let status = resp.status();
+        if !status.is_success() {
+            let body: Value = resp.json().await.unwrap_or_default();
+            return Err(ProviderError::Http(format!("google chat_stream failed: {body}")));
+        }
+
+        let byte_stream = resp.bytes_stream();
+        let stream = crate::providers::sse_parse_stream(byte_stream, |json| {
+            // Google format: candidates[0].content.parts[0].text
+            json.get("candidates")
+                .and_then(|v| v.as_array())
+                .and_then(|arr| arr.first())
+                .and_then(|c| c.get("content"))
+                .and_then(|c| c.get("parts"))
+                .and_then(|v| v.as_array())
+                .and_then(|arr| arr.first())
+                .and_then(|p| p.get("text"))
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string())
+        });
+        Ok(Box::pin(stream))
     }
 }

@@ -7,8 +7,10 @@ use crate::HTTP_CLIENT;
 use once_cell::sync::Lazy;
 use serde_json::{json, Value};
 use std::collections::HashMap;
+use std::sync::atomic::Ordering;
 use std::sync::{Arc, Mutex};
 use tauri::{AppHandle, Emitter, State};
+use futures::StreamExt;
 
 static REGISTRY: Lazy<ProviderRegistry> = Lazy::new(default_registry);
 
@@ -134,9 +136,11 @@ pub async fn ai_chat_stream(
     secrets: State<'_, Arc<dyn SecretsStore>>,
     args: AiChatArgs,
 ) -> Result<bool, String> {
+    let cancel_flag = Arc::new(std::sync::atomic::AtomicBool::new(false));
     {
         let mut s = ai_state.lock().map_err(|_| "ai state lock failed")?;
         s.aborted_streams.remove(&args.stream_id);
+        s.stream_cancel_flags.insert(args.stream_id.clone(), Arc::clone(&cancel_flag));
     }
 
     let raw_key = secrets
@@ -157,26 +161,12 @@ pub async fn ai_chat_stream(
         content: m.content,
     }).collect();
 
-    let response = provider_arc.chat_complete(&args.model, &key, &messages, &HTTP_CLIENT).await;
-
-    match response {
-        Ok(chat_resp) => {
-            let text = chat_resp.content;
-            let chunks: Vec<String> = if text.is_empty() {
-                vec![String::new()]
-            } else {
-                text.as_bytes()
-                    .chunks(256)
-                    .map(|c| String::from_utf8_lossy(c).to_string())
-                    .collect()
-            };
-
-            for chunk in chunks {
-                let aborted = {
-                    let s = ai_state.lock().map_err(|_| "ai state lock failed")?;
-                    s.aborted_streams.contains(&args.stream_id)
-                };
-                if aborted {
+    // Use real SSE streaming; if it fails, fall back to the old fake-chunking.
+    match provider_arc.chat_stream(&args.model, &key, &messages, &HTTP_CLIENT).await {
+        Ok(mut stream) => {
+            while let Some(chunk_result) = stream.next().await {
+                // Check cancellation every chunk.
+                if cancel_flag.load(Ordering::Relaxed) {
                     let _ = app.emit(
                         "ai:stream",
                         json!({
@@ -185,19 +175,54 @@ pub async fn ai_chat_stream(
                           "data": "aborted"
                         }),
                     );
+                    // Clean up flag
+                    let mut s = ai_state.lock().map_err(|_| "ai state lock failed")?;
+                    s.stream_cancel_flags.remove(&args.stream_id);
                     return Ok(false);
                 }
 
-                let _ = app.emit(
-                    "ai:stream",
-                    json!({
-                      "streamId": args.stream_id,
-                      "event": "delta",
-                      "data": chunk
-                    }),
-                );
+                match chunk_result {
+                    Ok(chunk) => {
+                        let _ = app.emit(
+                            "ai:stream",
+                            json!({
+                              "streamId": args.stream_id,
+                              "event": "delta",
+                              "data": chunk.delta
+                            }),
+                        );
+                        if chunk.finish_reason.is_some() {
+                            // End of stream signaled by finish_reason
+                            let _ = app.emit(
+                                "ai:stream",
+                                json!({
+                                  "streamId": args.stream_id,
+                                  "event": "done",
+                                  "data": Value::Null
+                                }),
+                            );
+                            let mut s = ai_state.lock().map_err(|_| "ai state lock failed")?;
+                            s.stream_cancel_flags.remove(&args.stream_id);
+                            return Ok(true);
+                        }
+                    }
+                    Err(err) => {
+                        let _ = app.emit(
+                            "ai:stream",
+                            json!({
+                              "streamId": args.stream_id,
+                              "event": "error",
+                              "data": err.to_string()
+                            }),
+                        );
+                        let mut s = ai_state.lock().map_err(|_| "ai state lock failed")?;
+                        s.stream_cancel_flags.remove(&args.stream_id);
+                        return Ok(false);
+                    }
+                }
             }
 
+            // Stream ended without explicit finish_reason — emit done anyway.
             let _ = app.emit(
                 "ai:stream",
                 json!({
@@ -206,18 +231,77 @@ pub async fn ai_chat_stream(
                   "data": Value::Null
                 }),
             );
+            let mut s = ai_state.lock().map_err(|_| "ai state lock failed")?;
+            s.stream_cancel_flags.remove(&args.stream_id);
             Ok(true)
         }
         Err(err) => {
-            let _ = app.emit(
-                "ai:stream",
-                json!({
-                  "streamId": args.stream_id,
-                  "event": "error",
-                  "data": err.to_string()
-                }),
-            );
-            Ok(false)
+            // FALLBACK: if SSE streaming fails, use the old fake-chunking so
+            // the UI still receives something.
+            eprintln!("[quebracho] chat_stream failed, falling back to fake chunking: {err}");
+            match provider_arc.chat_complete(&args.model, &key, &messages, &HTTP_CLIENT).await {
+                Ok(chat_resp) => {
+                    let text = chat_resp.content;
+                    let chunks: Vec<String> = if text.is_empty() {
+                        vec![String::new()]
+                    } else {
+                        text.as_bytes()
+                            .chunks(256)
+                            .map(|c| String::from_utf8_lossy(c).to_string())
+                            .collect()
+                    };
+
+                    for chunk in chunks {
+                        if cancel_flag.load(Ordering::Relaxed) {
+                            let _ = app.emit(
+                                "ai:stream",
+                                json!({
+                                  "streamId": args.stream_id,
+                                  "event": "error",
+                                  "data": "aborted"
+                                }),
+                            );
+                            let mut s = ai_state.lock().map_err(|_| "ai state lock failed")?;
+                            s.stream_cancel_flags.remove(&args.stream_id);
+                            return Ok(false);
+                        }
+
+                        let _ = app.emit(
+                            "ai:stream",
+                            json!({
+                              "streamId": args.stream_id,
+                              "event": "delta",
+                              "data": chunk
+                            }),
+                        );
+                    }
+
+                    let _ = app.emit(
+                        "ai:stream",
+                        json!({
+                          "streamId": args.stream_id,
+                          "event": "done",
+                          "data": Value::Null
+                        }),
+                    );
+                    let mut s = ai_state.lock().map_err(|_| "ai state lock failed")?;
+                    s.stream_cancel_flags.remove(&args.stream_id);
+                    Ok(true)
+                }
+                Err(err2) => {
+                    let _ = app.emit(
+                        "ai:stream",
+                        json!({
+                          "streamId": args.stream_id,
+                          "event": "error",
+                          "data": err2.to_string()
+                        }),
+                    );
+                    let mut s = ai_state.lock().map_err(|_| "ai state lock failed")?;
+                    s.stream_cancel_flags.remove(&args.stream_id);
+                    Ok(false)
+                }
+            }
         }
     }
 }
@@ -225,7 +309,10 @@ pub async fn ai_chat_stream(
 #[tauri::command]
 pub fn ai_abort_stream(ai_state: State<'_, Mutex<AiState>>, stream_id: String) -> Result<bool, String> {
     let mut s = ai_state.lock().map_err(|_| "ai state lock failed")?;
-    s.aborted_streams.insert(stream_id);
+    s.aborted_streams.insert(stream_id.clone());
+    if let Some(flag) = s.stream_cancel_flags.get(&stream_id) {
+        flag.store(true, Ordering::Relaxed);
+    }
     Ok(true)
 }
 
