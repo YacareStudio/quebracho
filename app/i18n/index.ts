@@ -98,7 +98,7 @@ const translations = {
       title: 'Configuración',
       colorThemeSection: 'Tema de color',
       colorThemeDescription: 'Define la paleta visual del editor, paneles y terminal integrada.',
-      themeForgeDark: 'Forge Dark (actual)',
+      themeQuebrachoDark: 'Forge Dark (actual)',
       themeAuraDark: 'Aura Dark (inspirado en Aura Theme)',
       fileIconThemeSection: 'Tema de íconos de archivos',
       fileIconThemeDescription: 'Controla los íconos del explorador de archivos y carpetas.',
@@ -240,6 +240,12 @@ const translations = {
       chatReadFile: 'Leído: {path}',
       chatListedFolder: 'Carpeta listada: {path}',
       chatSearchDone: 'Búsqueda completada: "{text}"',
+      providers: {
+        ollama: 'Ollama (local)',
+        openrouter: 'OpenRouter',
+      },
+      discoveryFailed: 'No se pudo obtener la lista de modelos',
+      usingStaticList: 'Usando lista estática',
     },
   },
   en: {
@@ -335,7 +341,7 @@ const translations = {
       title: 'Settings',
       colorThemeSection: 'Color theme',
       colorThemeDescription: 'Define the visual palette for the editor, panels, and integrated terminal.',
-      themeForgeDark: 'Forge Dark (current)',
+      themeQuebrachoDark: 'Forge Dark (current)',
       themeAuraDark: 'Aura Dark (inspired by Aura Theme)',
       fileIconThemeSection: 'File icon theme',
       fileIconThemeDescription: 'Controls the icons used in the file and folder explorer.',
@@ -477,6 +483,12 @@ const translations = {
       chatReadFile: 'Read: {path}',
       chatListedFolder: 'Listed folder: {path}',
       chatSearchDone: 'Search completed: "{text}"',
+      providers: {
+        ollama: 'Ollama (local)',
+        openrouter: 'OpenRouter',
+      },
+      discoveryFailed: 'Could not fetch model list',
+      usingStaticList: 'Using static list',
     },
   },
 } as const;
