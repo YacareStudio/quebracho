@@ -150,7 +150,9 @@ export type ProviderId =
   | 'opencode'
   | 'zen'
   | 'qwen'
-  | 'kimi';
+  | 'kimi'
+  | 'ollama'
+  | 'openrouter';
 
 export interface ProviderInfo {
   id: ProviderId;

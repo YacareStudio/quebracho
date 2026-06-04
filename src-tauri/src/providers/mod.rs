@@ -15,9 +15,13 @@ pub trait Provider: Send + Sync {
 pub mod openai_compatible;
 pub mod anthropic;
 pub mod google;
+pub mod ollama;
+pub mod openrouter;
 pub mod registry;
 
 pub use openai_compatible::OpenAiCompatibleProvider;
 pub use anthropic::AnthropicProvider;
 pub use google::GoogleProvider;
+pub use ollama::OllamaProvider;
+pub use openrouter::OpenRouterProvider;
 pub use registry::{ProviderRegistry, default_registry};

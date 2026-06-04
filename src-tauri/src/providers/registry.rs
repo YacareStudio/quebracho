@@ -1,5 +1,5 @@
 use crate::models::ProviderInfo;
-use crate::providers::{AnthropicProvider, GoogleProvider, OpenAiCompatibleProvider, Provider};
+use crate::providers::{AnthropicProvider, GoogleProvider, OllamaProvider, OpenAiCompatibleProvider, OpenRouterProvider, Provider};
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -98,6 +98,9 @@ pub fn default_registry() -> ProviderRegistry {
         base_url: "https://api.moonshot.cn",
         requires_auth_list: true,
     }));
+
+    registry.register(Arc::new(OllamaProvider));
+    registry.register(Arc::new(OpenRouterProvider));
 
     registry
 }
