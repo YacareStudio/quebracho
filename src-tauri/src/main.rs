@@ -83,6 +83,7 @@ fn main() {
             db_save_connections,
             db_load_connections,
             db_list_sqlite_tables,
+            db_list_tables,
             db_test_connection,
             db_execute_query,
             agent_init_context,
@@ -91,6 +92,11 @@ fn main() {
             agent_read_file_safe
         ])
         .setup(|app| {
+            // Register sqlx's runtime drivers so `AnyConnection` (used by the
+            // database panel for SQLite/MySQL/PostgreSQL) can resolve URL schemes.
+            // Without this, every Any-based connection fails at runtime.
+            sqlx::any::install_default_drivers();
+
             let config_path = app_config_path(app.handle())?;
             let secrets_path = config_path.with_file_name("quebracho-secrets.json");
 

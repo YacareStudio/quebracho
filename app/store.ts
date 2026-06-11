@@ -24,17 +24,11 @@ import {
   normalizeColorTheme,
   normalizeFileIconTheme,
 } from './theme/appearance';
-import { confirm as tauriConfirm } from '@tauri-apps/plugin-dialog';
+import { confirmAction } from './confirm';
 
 export type SelectedNodeKind = 'file' | 'directory';
 
-async function confirmDiscard(message: string): Promise<boolean> {
-  try {
-    return await tauriConfirm(message, { title: 'Quebracho', kind: 'warning' });
-  } catch {
-    return window.confirm(message);
-  }
-}
+const confirmDiscard = confirmAction;
 
 export interface SelectedNode {
   path: string;

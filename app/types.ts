@@ -436,6 +436,7 @@ export interface ForgeAPI {
     saveConnections: (connections: DbConnection[]) => Promise<void>;
     loadConnections: () => Promise<DbConnection[]>;
     listSqliteTables: (filePath: string) => Promise<string[]>;
+    listTables: (connection: DbConnection) => Promise<string[]>;
     testConnection: (connection: DbConnection) => Promise<boolean>;
     executeQuery: (
       connection: DbConnection,

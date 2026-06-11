@@ -15,6 +15,7 @@ import {
   Globe,
 } from 'lucide-react';
 import { t } from '../i18n';
+import { confirmAction } from '../confirm';
 import { ExplorerNodeIcon } from '../theme/fileIcons';
 import DatabasePanel from './DatabasePanel';
 import SearchPanel from './SearchPanel';
@@ -695,7 +696,7 @@ function ExplorerPanel() {
 
   const handleCtxDelete = useCallback(async () => {
     if (!ctxMenu) return;
-    if (confirm(t(uiLanguage, 'explorer.confirmDelete', { name: ctxMenu.node.name }))) {
+    if (await confirmAction(t(uiLanguage, 'explorer.confirmDelete', { name: ctxMenu.node.name }))) {
       await deleteItem(ctxMenu.node.path);
     }
   }, [ctxMenu, deleteItem, uiLanguage]);

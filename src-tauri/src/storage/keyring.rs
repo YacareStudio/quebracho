@@ -1,13 +1,31 @@
 use crate::storage::SecretsStore;
+use std::sync::Once;
 
 const SERVICE: &str = "com.yacarestudio.quebracho";
+
+static KEYRING_INIT: Once = Once::new();
+
+/// Register the OS-native credential store exactly once per process.
+///
+/// keyring 4 split the backend out into `keyring-core`: an `Entry` cannot be
+/// used until a default store is installed. On Linux we prefer the Secret
+/// Service (persistent across reboots) over the session-only kernel keyutils.
+/// Errors are swallowed here — the probe in `new()` detects an unavailable
+/// backend and the caller falls back to the JSON secrets file.
+fn ensure_native_store() {
+    KEYRING_INIT.call_once(|| {
+        let _ = keyring::use_native_store(true);
+    });
+}
 
 pub struct KeyringSecretsStore;
 
 impl KeyringSecretsStore {
     pub fn new() -> Result<Self, String> {
+        ensure_native_store();
+
         // Probe the OS keychain by creating a dummy entry.
-        let probe = keyring::Entry::new(SERVICE, "__probe__")
+        let probe = keyring_core::Entry::new(SERVICE, "__probe__")
             .map_err(|e| format!("keychain entry creation failed: {e}"))?;
         match probe.set_password("probe") {
             Ok(_) => {
@@ -21,27 +39,27 @@ impl KeyringSecretsStore {
 
 impl SecretsStore for KeyringSecretsStore {
     fn get(&self, provider_id: &str) -> Result<Option<String>, String> {
-        let entry = keyring::Entry::new(SERVICE, provider_id)
+        let entry = keyring_core::Entry::new(SERVICE, provider_id)
             .map_err(|e| e.to_string())?;
         match entry.get_password() {
             Ok(password) => Ok(Some(password)),
-            Err(keyring::Error::NoEntry) => Ok(None),
+            Err(keyring_core::Error::NoEntry) => Ok(None),
             Err(e) => Err(e.to_string()),
         }
     }
 
     fn set(&self, provider_id: &str, key: &str) -> Result<(), String> {
-        let entry = keyring::Entry::new(SERVICE, provider_id)
+        let entry = keyring_core::Entry::new(SERVICE, provider_id)
             .map_err(|e| e.to_string())?;
         entry.set_password(key).map_err(|e| e.to_string())
     }
 
     fn remove(&self, provider_id: &str) -> Result<(), String> {
-        let entry = keyring::Entry::new(SERVICE, provider_id)
+        let entry = keyring_core::Entry::new(SERVICE, provider_id)
             .map_err(|e| e.to_string())?;
         match entry.delete_credential() {
             Ok(_) => Ok(()),
-            Err(keyring::Error::NoEntry) => Ok(()),
+            Err(keyring_core::Error::NoEntry) => Ok(()),
             Err(e) => Err(e.to_string()),
         }
     }

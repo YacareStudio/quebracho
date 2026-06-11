@@ -3,10 +3,15 @@
 @import '@xterm/xterm/css/xterm.css';
 
 /* ── Global reset & scrollbar styles (moved from index.html so Vite 5 inline-css bug is avoided) ── */
-*, ::before, ::after {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+/* Keep the reset inside Tailwind's `base` layer: with native cascade layers
+   (preserved by Vite 8 / Rolldown), unlayered rules beat layered ones, so an
+   unlayered `* { padding: 0 }` would override every `p-*` / `m-*` utility. */
+@layer base {
+  *, ::before, ::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
 }
 
 html, body, #root {

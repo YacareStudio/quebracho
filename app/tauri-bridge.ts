@@ -424,8 +424,9 @@ const bridge: ForgeAPI = {
     saveConnections: (connections) => invoke('db_save_connections', { connections }),
     loadConnections: () => invoke('db_load_connections') as Promise<import('./types').DbConnection[]>,
     listSqliteTables: (filePath) => invoke('db_list_sqlite_tables', { filePath }),
-    testConnection: (connection) => invoke('db_test_connection', { connection }),
-    executeQuery: (connection, query) => invoke('db_execute_query', { connection, query }),
+    listTables: (connection) => invoke('db_list_tables', { conn: connection }),
+    testConnection: (connection) => invoke('db_test_connection', { conn: connection }),
+    executeQuery: (connection, query) => invoke('db_execute_query', { conn: connection, query }),
   },
 
   agent: {

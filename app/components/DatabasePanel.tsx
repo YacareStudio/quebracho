@@ -15,6 +15,7 @@ import {
   Pencil,
 } from 'lucide-react';
 import { t } from '../i18n';
+import { confirmAction } from '../confirm';
 import type { DbConnection } from '../types';
 
 type DbType = 'mysql' | 'postgresql' | 'sqlite' | 'sqlserver';
@@ -49,7 +50,6 @@ const MOCK_TABLES: Record<DbType, string[]> = {
 
 export default function DatabasePanel() {
   const uiLanguage = useStore((s) => s.uiLanguage);
-  const workspacePath = useStore((s) => s.workspacePath);
   const openDbQueryTab = useStore((s) => s.openDbQueryTab);
 
   const [connections, setConnections] = useState<DbConnection[]>([]);
@@ -73,9 +73,11 @@ export default function DatabasePanel() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
   const [realTables, setRealTables] = useState<Record<string, string[]>>({});
+  const [tableStatus, setTableStatus] = useState<
+    Record<string, 'loading' | 'ready' | 'error'>
+  >({});
   const [tablesExpanded, setTablesExpanded] = useState(true);
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const editInputRef = useRef<HTMLInputElement>(null);
 
   // Load persisted connections on mount
@@ -111,21 +113,32 @@ export default function DatabasePanel() {
     window.forgeAPI.database.saveConnections(connections).catch(() => {});
   }, [connections, loading]);
 
-  // Load real SQLite tables when a SQLite connection becomes active
+  // Load real tables when a connection becomes active: SQLite reads from the
+  // file, MySQL/MariaDB and PostgreSQL query their information_schema live.
   useEffect(() => {
     const conn = connections.find((c) => c.id === activeConnectionId);
-    if (!conn || conn.dbType !== 'sqlite' || !conn.filePath) return;
-    if (realTables[conn.id]) return;
+    if (!conn) return;
+    if (tableStatus[conn.id]) return; // already attempted for this connection
 
-    window.forgeAPI.database
-      .listSqliteTables(conn.filePath)
+    const isSqlite = conn.dbType === 'sqlite';
+    const isServer = conn.dbType === 'mysql' || conn.dbType === 'postgresql';
+    if (isSqlite && !conn.filePath) return;
+    if (!isSqlite && !isServer) return; // SQL Server etc. fall back to mock
+
+    setTableStatus((prev) => ({ ...prev, [conn.id]: 'loading' }));
+    const request = isSqlite
+      ? window.forgeAPI.database.listSqliteTables(conn.filePath as string)
+      : window.forgeAPI.database.listTables(conn);
+    request
       .then((tables) => {
         setRealTables((prev) => ({ ...prev, [conn.id]: tables }));
+        setTableStatus((prev) => ({ ...prev, [conn.id]: 'ready' }));
       })
       .catch(() => {
         setRealTables((prev) => ({ ...prev, [conn.id]: [] }));
+        setTableStatus((prev) => ({ ...prev, [conn.id]: 'error' }));
       });
-  }, [activeConnectionId, connections, realTables]);
+  }, [activeConnectionId, connections, tableStatus]);
 
   const resetForm = () => {
     setDbType('mysql');
@@ -191,12 +204,21 @@ export default function DatabasePanel() {
     setConnecting(false);
   };
 
-  const handleRemoveConnection = (id: string) => {
-    setConnections((prev) => prev.filter((c) => c.id !== id));
-    if (activeConnectionId === id) setActiveConnectionId(null);
+  const handleRemoveConnection = async (conn: DbConnection) => {
+    const ok = await confirmAction(
+      t(uiLanguage, 'explorer.confirmDelete', { name: conn.name }),
+    );
+    if (!ok) return;
+    setConnections((prev) => prev.filter((c) => c.id !== conn.id));
+    if (activeConnectionId === conn.id) setActiveConnectionId(null);
     setRealTables((prev) => {
       const next = { ...prev };
-      delete next[id];
+      delete next[conn.id];
+      return next;
+    });
+    setTableStatus((prev) => {
+      const next = { ...prev };
+      delete next[conn.id];
       return next;
     });
   };
@@ -223,10 +245,12 @@ export default function DatabasePanel() {
 
   const getTables = useCallback(
     (conn: DbConnection): string[] => {
-      if (conn.dbType === 'sqlite') {
-        return realTables[conn.id] || [];
+      // SQLite, MySQL/MariaDB and PostgreSQL load real tables; only the
+      // not-yet-implemented SQL Server still uses mock data.
+      if (conn.dbType === 'sqlserver') {
+        return MOCK_TABLES[conn.dbType];
       }
-      return MOCK_TABLES[conn.dbType];
+      return realTables[conn.id] || [];
     },
     [realTables]
   );
@@ -256,15 +280,6 @@ export default function DatabasePanel() {
     },
     [runQueryInEditor]
   );
-
-  if (!workspacePath) {
-    return (
-      <div className="flex-1 flex flex-col items-center justify-center gap-2 text-quebracho-text/50 text-sm pl-4 pr-4">
-        <Database size={28} />
-        <p>{t(uiLanguage, 'searchPanel.openProjectFirst')}</p>
-      </div>
-    );
-  }
 
   return (
     <div className="w-full h-full flex flex-col bg-quebracho-sidebar overflow-hidden">
@@ -335,7 +350,7 @@ export default function DatabasePanel() {
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleRemoveConnection(conn.id);
+                        void handleRemoveConnection(conn);
                       }}
                       className="opacity-0 group-hover:opacity-60 hover:!opacity-100 text-quebracho-text-dim hover:text-red-400 transition-opacity"
                       title={t(uiLanguage, 'database.removeConnection')}
@@ -403,21 +418,17 @@ export default function DatabasePanel() {
                   className="quebracho-input flex-1 text-[12px]"
                 />
                 <button
-                  onClick={() => fileInputRef.current?.click()}
+                  onClick={async () => {
+                    // Use the native Tauri dialog so we get the file's absolute
+                    // path. An HTML <input type="file"> only exposes the
+                    // basename, which sqlx cannot resolve.
+                    const selected = await window.forgeAPI.openFile();
+                    if (selected) setFilePath(selected);
+                  }}
                   className="pl-2 pr-2 rounded bg-quebracho-input hover:bg-quebracho-hover text-quebracho-text text-[11px] transition-colors"
                 >
                   …
                 </button>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".db,.sqlite,.sqlite3"
-                  className="hidden"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (f) setFilePath(f.name);
-                  }}
-                />
               </div>
             </div>
           ) : (
@@ -573,13 +584,13 @@ export default function DatabasePanel() {
                 ))}
                 {getTables(activeConnection).length === 0 && (
                   <div className="pl-8 pr-3 h-6 text-[11px] text-quebracho-text-dim/60 italic">
-                    {activeConnection.dbType === 'sqlite'
-                      ? uiLanguage === 'es'
-                        ? 'Cargando tablas…'
-                        : 'Loading tables…'
-                      : uiLanguage === 'es'
-                        ? 'No hay tablas (modo simulado)'
-                        : 'No tables (mock mode)'}
+                    {activeConnection.dbType === 'sqlserver'
+                      ? uiLanguage === 'es' ? 'No hay tablas (modo simulado)' : 'No tables (mock mode)'
+                      : tableStatus[activeConnection.id] === 'loading'
+                        ? uiLanguage === 'es' ? 'Cargando tablas…' : 'Loading tables…'
+                        : tableStatus[activeConnection.id] === 'error'
+                          ? uiLanguage === 'es' ? 'No se pudieron cargar las tablas' : 'Could not load tables'
+                          : uiLanguage === 'es' ? 'No hay tablas' : 'No tables'}
                   </div>
                 )}
               </div>

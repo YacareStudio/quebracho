@@ -1,6 +1,6 @@
 [package]
 name = "quebracho"
-version = "0.0.1-alpha4"
+version = "0.0.2"
 description = "Quebracho desktop app by Yacare Studio"
 authors = ["mulator <campogabriel@gmail.com>"]
 license = ""
@@ -33,11 +33,12 @@ reqwest = { version = "0.13", default-features = false, features = ["json", "nat
 bytes = "1"
 thiserror = "2"
 async-trait = "0.1"
-keyring = "3"
+keyring = "4"
+keyring-core = "1"
 futures = "0.3"
 tauri-plugin-clipboard-manager = "2"
 urlencoding = "2"
-sqlx = { version = "0.8", features = ["runtime-tokio", "any", "mysql", "postgres", "sqlite"] }
+sqlx = { version = "0.9", features = ["runtime-tokio", "any", "mysql", "postgres", "sqlite", "chrono", "rust_decimal", "uuid", "json"] }
 tiberius = { version = "0.12.3", features = ["tokio", "tds73"] }
 tokio = { version = "1", features = ["net"] }
 tokio-util = { version = "0.7.18", features = ["compat"] }
