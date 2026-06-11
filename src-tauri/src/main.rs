@@ -3,9 +3,11 @@
 use quebracho_lib::commands::agent::*;
 use quebracho_lib::commands::ai::*;
 use quebracho_lib::commands::app::*;
+use quebracho_lib::commands::database::*;
 use quebracho_lib::commands::fs::*;
 use quebracho_lib::commands::live_server::*;
 use quebracho_lib::commands::lsp::*;
+use quebracho_lib::commands::search::*;
 use quebracho_lib::commands::settings::*;
 use quebracho_lib::commands::terminal::*;
 use quebracho_lib::state::{AiState, LiveServerState, LspState, TerminalState, WorkspaceState};
@@ -15,8 +17,9 @@ use std::sync::Mutex;
 use tauri::Manager;
 
 fn main() {
-    tauri::Builder::default()
+    let builder = tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(Mutex::new(WorkspaceState::default()))
         .manage(Mutex::new(TerminalState::default()))
@@ -75,6 +78,13 @@ fn main() {
             agent_escribir_archivo,
             agent_listar_carpeta,
             agent_buscar_en_proyecto,
+            workspace_search,
+            workspace_replace,
+            db_save_connections,
+            db_load_connections,
+            db_list_sqlite_tables,
+            db_test_connection,
+            db_execute_query,
             agent_init_context,
             agent_snapshot_folder,
             agent_file_exists,
@@ -103,7 +113,10 @@ fn main() {
             app.manage(secrets);
 
             Ok(())
-        })
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        });
+
+    if let Err(e) = builder.run(tauri::generate_context!()) {
+        eprintln!("Failed to start Quebracho: {e}");
+        std::process::exit(1);
+    }
 }

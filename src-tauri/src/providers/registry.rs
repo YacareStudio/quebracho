@@ -25,6 +25,7 @@ impl ProviderRegistry {
                 name: p.name().to_string(),
                 hint: p.hint().map(|s| s.to_string()),
                 static_models: vec![],
+                requires_auth: p.requires_auth_for_list(),
             }
         }).collect();
         list.sort_by(|a, b| a.id.cmp(&b.id));

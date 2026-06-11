@@ -11,7 +11,7 @@ impl KeyringSecretsStore {
             .map_err(|e| format!("keychain entry creation failed: {e}"))?;
         match probe.set_password("probe") {
             Ok(_) => {
-                let _ = probe.delete_password();
+                let _ = probe.delete_credential();
                 Ok(Self)
             }
             Err(e) => Err(format!("keychain probe failed: {e}")),
@@ -39,7 +39,7 @@ impl SecretsStore for KeyringSecretsStore {
     fn remove(&self, provider_id: &str) -> Result<(), String> {
         let entry = keyring::Entry::new(SERVICE, provider_id)
             .map_err(|e| e.to_string())?;
-        match entry.delete_password() {
+        match entry.delete_credential() {
             Ok(_) => Ok(()),
             Err(keyring::Error::NoEntry) => Ok(()),
             Err(e) => Err(e.to_string()),

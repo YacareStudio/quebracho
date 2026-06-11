@@ -58,6 +58,8 @@ pub struct ProviderInfo {
     pub hint: Option<String>,
     #[serde(rename = "staticModels")]
     pub static_models: Vec<String>,
+    #[serde(rename = "requiresAuth")]
+    pub requires_auth: bool,
 }
 
 #[derive(Serialize)]
@@ -177,4 +179,52 @@ pub struct AgentSnapshotFile {
     #[serde(rename = "relPath")]
     pub rel_path: String,
     pub content: String,
+}
+
+// ── Database ───────────────────────────────────────────────────────────
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct DbConnection {
+    pub id: String,
+    pub name: String,
+    #[serde(rename = "dbType")]
+    pub db_type: String,
+    pub host: Option<String>,
+    pub port: Option<u16>,
+    pub user: Option<String>,
+    pub password: Option<String>,
+    pub database: Option<String>,
+    #[serde(rename = "filePath")]
+    pub file_path: Option<String>,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct DbConnectionsFile {
+    pub connections: Vec<DbConnection>,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct DbQueryResult {
+    pub columns: Vec<String>,
+    pub rows: Vec<Vec<Option<String>>>,
+}
+
+#[derive(Serialize)]
+pub struct WorkspaceSearchMatch {
+    pub path: String,
+    pub line: usize,
+    pub preview: String,
+}
+
+#[derive(Serialize)]
+pub struct WorkspaceSearchResult {
+    pub query: String,
+    pub matches: Vec<WorkspaceSearchMatch>,
+    pub truncated: bool,
+}
+
+#[derive(Serialize)]
+pub struct WorkspaceReplaceResult {
+    pub files_modified: usize,
+    pub replacements_count: usize,
 }

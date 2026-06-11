@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Editor, { OnMount, BeforeMount } from '@monaco-editor/react';
 import { useStore } from '../store';
 import { X } from 'lucide-react';
@@ -6,6 +6,8 @@ import type { editor } from 'monaco-editor';
 import logoUrl from '../assets/quebracho-logo.png';
 import { lspClient, getLspLanguageId } from '../lsp/client';
 import ImageViewer from './ImageViewer';
+import DbQueryEditor from './DbQueryEditor';
+import FindReplaceOverlay from './FindReplaceOverlay';
 import { t } from '../i18n';
 import { defineMonacoThemes, getMonacoThemeName } from '../theme/appearance';
 
@@ -59,6 +61,30 @@ function toPascalCase(input: string): string {
     .join('');
 }
 
+const editorOptions: editor.IStandaloneEditorConstructionOptions = {
+  fontSize: 14,
+  fontFamily: "'Cascadia Code', 'Fira Code', 'JetBrains Mono', Consolas, 'Courier New', monospace",
+  fontLigatures: true,
+  minimap: { enabled: true },
+  scrollBeyondLastLine: false,
+  smoothScrolling: true,
+  cursorBlinking: 'smooth',
+  cursorSmoothCaretAnimation: 'on',
+  renderLineHighlight: 'all',
+  wordWrap: 'off',
+  lineNumbers: 'on',
+  glyphMargin: false,
+  folding: true,
+  bracketPairColorization: { enabled: true },
+  automaticLayout: true,
+  tabSize: 2,
+  padding: { top: 8 },
+  suggest: {
+    showWords: true,
+    showSnippets: true,
+  },
+};
+
 // ─────────────────────────────────────────────────────────────────────────
 // Welcome Screen
 // ─────────────────────────────────────────────────────────────────────────
@@ -105,7 +131,7 @@ function EmptyWorkspacePlaceholder() {
 
   return (
     <div className="w-full h-full flex items-center justify-center bg-quebracho-editor select-none">
-      <div className="px-6 py-5 rounded-md border border-quebracho-border/70 bg-quebracho-sidebar/35 text-center max-w-[460px]">
+      <div className="pl-6 pr-6 pt-5 pb-5 rounded-md border border-quebracho-border/70 bg-quebracho-sidebar/35 text-center max-w-[460px]">
         <p className="text-[14px] text-quebracho-text-strong/85 mb-2">{t(uiLanguage, 'welcome.workspaceReadyTitle')}</p>
         <p className="text-[12px] text-quebracho-text/60">{t(uiLanguage, 'welcome.workspaceReadyBody')}</p>
       </div>
@@ -120,7 +146,7 @@ function TabBar() {
   const openTabs = useStore((s) => s.openTabs);
   const activeTabId = useStore((s) => s.activeTabId);
   const setActiveTab = useStore((s) => s.setActiveTab);
-  const closeTab = useStore((s) => s.closeTab);
+  const promptCloseTab = useStore((s) => s.promptCloseTab);
 
   if (openTabs.length === 0) return null;
 
@@ -132,19 +158,18 @@ function TabBar() {
           <div
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`group flex items-center h-[35px] px-3 gap-2 cursor-pointer min-w-0 max-w-[220px] border-r border-black/30 transition-colors
+            className={`group flex items-center h-[35px] pl-3 pr-3 gap-2 cursor-pointer min-w-0 max-w-[220px] border-r border-black/30 transition-colors
               ${isActive
                 ? 'bg-quebracho-tab-active'
                 : 'bg-quebracho-tabbar hover:bg-white/[0.03]'}
             `}
           >
             {tab.isUnsaved && (
-              <div className="w-[7px] h-[7px] rounded-full bg-quebracho-text/70 flex-shrink-0" />
+              <div className="w-1.75 h-1.75 rounded-full bg-quebracho-text/70 shrink-0" />
             )}
 
             <span
-              className="truncate text-[13px]"
-              style={{ color: isActive ? '#4ADB94' : '#96969D' }}
+              className={`truncate text-[13px] ${isActive ? 'text-quebracho-accent' : 'text-quebracho-text-tab'}`}
             >
               {tab.name}
             </span>
@@ -152,12 +177,11 @@ function TabBar() {
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                closeTab(tab.id);
+                void promptCloseTab(tab.id);
               }}
-              className={`tab-close p-0.5 flex-shrink-0
+              className={`tab-close p-0.5 shrink-0 text-quebracho-text-tab
                 ${isActive ? 'opacity-70 hover:opacity-100' : 'opacity-0 group-hover:opacity-70 hover:!opacity-100'}
               `}
-              style={{ color: isActive ? '#96969D' : '#96969D' }}
             >
               <X size={14} />
             </button>
@@ -187,6 +211,8 @@ function MonacoWrapper() {
   const setCursorPosition = useStore((s) => s.setCursorPosition);
   const setHasTextSelection = useStore((s) => s.setHasTextSelection);
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
+  const previousTabIdRef = useRef<string | null>(null);
+  const viewStatesRef = useRef<Map<string, editor.ICodeEditorViewState | null>>(new Map());
 
   // Track which tab paths we've sent textDocument/didOpen for, so we
   // can fire didOpen exactly once per tab and didClose when the tab
@@ -229,9 +255,14 @@ function MonacoWrapper() {
     }
   }, []);
 
-  const handleMount: OnMount = useCallback((editor) => {
+  const handleMount: OnMount = useCallback((editor, monaco) => {
     editorRef.current = editor;
     editor.focus();
+
+    // Override native find/replace shortcuts so our custom overlay opens instead.
+    // We rely on a DOM capture listener on the editor container (see useEffect
+    // below) rather than editor.addCommand, because addCommand doesn't reliably
+    // win against Monaco's built-in Find widget keybindings.
 
     editor.onDidChangeCursorPosition((e) => {
       setCursorPosition({
@@ -388,6 +419,58 @@ function MonacoWrapper() {
     }
   }, [activeTab, setHasTextSelection]);
 
+  // Persist and restore Monaco view state (scroll, cursor, selection) when
+  // switching tabs so the editor does not reset its viewport on every change.
+  useEffect(() => {
+    const editor = editorRef.current;
+    if (!editor) return;
+
+    const previousId = previousTabIdRef.current;
+    const currentId = activeTab?.id ?? null;
+
+    if (previousId && previousId !== currentId) {
+      viewStatesRef.current.set(previousId, editor.saveViewState());
+    }
+    previousTabIdRef.current = currentId;
+
+    if (currentId && !activeTab?.imageDataUrl) {
+      // Wait for @monaco-editor/react to switch the model.
+      requestAnimationFrame(() => {
+        const saved = viewStatesRef.current.get(currentId);
+        if (saved) {
+          editor.restoreViewState(saved);
+        }
+        editor.focus();
+      });
+    }
+  }, [activeTab?.id, activeTab?.imageDataUrl]);
+
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Intercept Ctrl+F / Ctrl+H at the DOM level before Monaco sees them.
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const handler = (e: KeyboardEvent) => {
+      const mod = e.ctrlKey || e.metaKey;
+      const key = e.key.toLowerCase();
+      if (mod && !e.shiftKey && key === 'f') {
+        e.preventDefault();
+        e.stopPropagation();
+        window.dispatchEvent(new CustomEvent('quebracho:open-find'));
+        return;
+      }
+      if (mod && !e.shiftKey && key === 'h') {
+        e.preventDefault();
+        e.stopPropagation();
+        window.dispatchEvent(new CustomEvent('quebracho:open-replace'));
+        return;
+      }
+    };
+    el.addEventListener('keydown', handler, true);
+    return () => el.removeEventListener('keydown', handler, true);
+  }, []);
+
   if (!activeTab) {
     if (!workspacePath) return <WelcomeScreen />;
     return <EmptyWorkspacePlaceholder />;
@@ -407,10 +490,14 @@ function MonacoWrapper() {
     );
   }
 
+  // Database query tabs render a custom SQL editor + results grid.
+  if (activeTab.dbConnectionId) {
+    return <DbQueryEditor key={activeTab.id} tab={activeTab} />;
+  }
+
   return (
-    <div className="w-full h-full bg-quebracho-editor">
+    <div ref={containerRef} className="w-full h-full bg-quebracho-editor relative">
       <Editor
-        key={activeTab.id}
         // path becomes part of the Monaco model URI so completion / hover
         // providers can identify which file the request is for.
         path={activeTab.path}
@@ -420,30 +507,9 @@ function MonacoWrapper() {
         beforeMount={handleBeforeMount}
         onChange={handleChange}
         onMount={handleMount}
-        options={{
-          fontSize: 14,
-          fontFamily: "'Cascadia Code', 'Fira Code', 'JetBrains Mono', Consolas, 'Courier New', monospace",
-          fontLigatures: true,
-          minimap: { enabled: true },
-          scrollBeyondLastLine: false,
-          smoothScrolling: true,
-          cursorBlinking: 'smooth',
-          cursorSmoothCaretAnimation: 'on',
-          renderLineHighlight: 'all',
-          wordWrap: 'off',
-          lineNumbers: 'on',
-          glyphMargin: false,
-          folding: true,
-          bracketPairColorization: { enabled: true },
-          automaticLayout: true,
-          tabSize: 2,
-          padding: { top: 8 },
-          suggest: {
-            showWords: true,
-            showSnippets: true,
-          },
-        }}
+        options={editorOptions}
       />
+      <FindReplaceOverlay editor={editorRef.current} />
     </div>
   );
 }

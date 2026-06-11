@@ -1,53 +1,109 @@
 /* ── xterm.js styles ────────────────────────────────────────────────── */
+@import "tailwindcss";
 @import '@xterm/xterm/css/xterm.css';
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* ── Global reset & scrollbar styles (moved from index.html so Vite 5 inline-css bug is avoided) ── */
+*, ::before, ::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
 
-/* ── Runtime color themes (used by Tailwind color tokens) ───────────── */
+html, body, #root {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #323643;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #323643;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #4a4f5e;
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #5a5f6e;
+}
+
+::-webkit-scrollbar-corner {
+  background: #323643;
+}
+
+/* ── Map Tailwind color tokens to CSS variables (Tailwind 4 CSS-first) ── */
+@theme inline {
+  --color-quebracho-bg: var(--quebracho-bg);
+  --color-quebracho-titlebar: var(--quebracho-titlebar);
+  --color-quebracho-activitybar: var(--quebracho-activitybar);
+  --color-quebracho-sidebar: var(--quebracho-sidebar);
+  --color-quebracho-tabbar: var(--quebracho-tabbar);
+  --color-quebracho-tab-active: var(--quebracho-tab-active);
+  --color-quebracho-editor: var(--quebracho-editor);
+  --color-quebracho-statusbar: var(--quebracho-statusbar);
+  --color-quebracho-terminal: var(--quebracho-terminal);
+  --color-quebracho-border: var(--quebracho-border);
+  --color-quebracho-input: var(--quebracho-input);
+  --color-quebracho-hover: var(--quebracho-hover);
+  --color-quebracho-text: var(--quebracho-text);
+  --color-quebracho-text-strong: var(--quebracho-text-strong);
+  --color-quebracho-text-dim: var(--quebracho-text-dim);
+  --color-quebracho-text-tab: var(--quebracho-text-tab);
+  --color-quebracho-text-term: var(--quebracho-text-term);
+  --color-quebracho-text-menu: var(--quebracho-text-menu);
+  --color-quebracho-accent: var(--quebracho-accent);
+}
+
+/* ── Runtime color themes ───────────────────────────────────────────── */
 :root {
-  --quebracho-bg: 50 54 67;
-  --quebracho-titlebar: 42 45 56;
-  --quebracho-activitybar: 42 45 56;
-  --quebracho-sidebar: 36 40 46;
-  --quebracho-tabbar: 39 39 47;
-  --quebracho-tab-active: 45 47 56;
-  --quebracho-editor: 45 47 56;
-  --quebracho-statusbar: 47 50 63;
-  --quebracho-terminal: 31 32 37;
-  --quebracho-border: 58 63 75;
-  --quebracho-input: 31 32 37;
-  --quebracho-hover: 255 255 255;
-  --quebracho-text: 208 211 218;
-  --quebracho-text-strong: 255 255 255;
-  --quebracho-text-dim: 161 163 175;
-  --quebracho-text-tab: 150 150 157;
-  --quebracho-text-term: 177 180 188;
-  --quebracho-text-menu: 211 213 222;
-  --quebracho-accent: 74 219 148;
+  --quebracho-bg: rgb(50, 54, 67);
+  --quebracho-titlebar: rgb(42, 45, 56);
+  --quebracho-activitybar: rgb(42, 45, 56);
+  --quebracho-sidebar: rgb(36, 40, 46);
+  --quebracho-tabbar: rgb(39, 39, 47);
+  --quebracho-tab-active: rgb(45, 47, 56);
+  --quebracho-editor: rgb(45, 47, 56);
+  --quebracho-statusbar: rgb(47, 50, 63);
+  --quebracho-terminal: rgb(31, 32, 37);
+  --quebracho-border: rgb(58, 63, 75);
+  --quebracho-input: rgb(31, 32, 37);
+  --quebracho-hover: rgba(255, 255, 255, 0.1);
+  --quebracho-text: rgb(208, 211, 218);
+  --quebracho-text-strong: rgb(255, 255, 255);
+  --quebracho-text-dim: rgb(161, 163, 175);
+  --quebracho-text-tab: rgb(150, 150, 157);
+  --quebracho-text-term: rgb(177, 180, 188);
+  --quebracho-text-menu: rgb(211, 213, 222);
+  --quebracho-accent: rgb(74, 219, 148);
 }
 
 html[data-color-theme='aura-dark'] {
-  --quebracho-bg: 22 20 32;
-  --quebracho-titlebar: 26 24 37;
-  --quebracho-activitybar: 26 24 37;
-  --quebracho-sidebar: 27 26 36;
-  --quebracho-tabbar: 31 29 44;
-  --quebracho-tab-active: 39 36 55;
-  --quebracho-editor: 21 20 27;
-  --quebracho-statusbar: 34 31 47;
-  --quebracho-terminal: 18 17 26;
-  --quebracho-border: 58 50 78;
-  --quebracho-input: 22 21 31;
-  --quebracho-hover: 158 124 255;
-  --quebracho-text: 223 225 255;
-  --quebracho-text-strong: 255 255 255;
-  --quebracho-text-dim: 170 162 200;
-  --quebracho-text-tab: 174 167 206;
-  --quebracho-text-term: 215 217 255;
-  --quebracho-text-menu: 223 225 255;
-  --quebracho-accent: 158 124 255;
+  --quebracho-bg: rgb(22, 20, 32);
+  --quebracho-titlebar: rgb(26, 24, 37);
+  --quebracho-activitybar: rgb(26, 24, 37);
+  --quebracho-sidebar: rgb(27, 26, 36);
+  --quebracho-tabbar: rgb(31, 29, 44);
+  --quebracho-tab-active: rgb(39, 36, 55);
+  --quebracho-editor: rgb(21, 20, 27);
+  --quebracho-statusbar: rgb(34, 31, 47);
+  --quebracho-terminal: rgb(18, 17, 26);
+  --quebracho-border: rgb(58, 50, 78);
+  --quebracho-input: rgb(22, 21, 31);
+  --quebracho-hover: rgba(255, 255, 255, 0.1);
+  --quebracho-text: rgb(223, 225, 255);
+  --quebracho-text-strong: rgb(255, 255, 255);
+  --quebracho-text-dim: rgb(170, 162, 200);
+  --quebracho-text-tab: rgb(174, 167, 206);
+  --quebracho-text-term: rgb(215, 217, 255);
+  --quebracho-text-menu: rgb(223, 225, 255);
+  --quebracho-accent: rgb(158, 124, 255);
 }
 
 /* ── Global Styles ──────────────────────────────────────────────────── */
@@ -58,8 +114,8 @@ body {
   -moz-osx-font-smoothing: grayscale;
   user-select: none;
   overflow: hidden;
-  background-color: rgb(var(--quebracho-bg));
-  color: rgb(var(--quebracho-text));
+  background-color: var(--quebracho-bg);
+  color: var(--quebracho-text);
 }
 
 /* ── Title Bar Drag ─────────────────────────────────────────────────── */
@@ -81,8 +137,8 @@ body {
 
 /* ── Context Menu ───────────────────────────────────────────────────── */
 .context-menu {
-  background-color: #24282E;
-  border: 1px solid #3A3F4B;
+  background-color: var(--quebracho-sidebar);
+  border: 1px solid var(--quebracho-border);
   border-radius: 6px;
   padding: 4px 0;
   min-width: 170px;
@@ -93,20 +149,20 @@ body {
 .context-menu-item {
   padding: 6px 16px;
   font-size: 13px;
-  color: #D3D5DE;
+  color: var(--quebracho-text-menu);
   cursor: pointer;
   transition: background-color 0.08s ease, color 0.08s ease;
 }
 
 .context-menu-item:hover {
-  background-color: rgba(74, 219, 148, 0.15);
-  color: #4ADB94;
+  background-color: color-mix(in srgb, var(--quebracho-accent) 15%, transparent);
+  color: var(--quebracho-accent);
 }
 
 .context-menu-divider {
   height: 1px;
   margin: 4px 0;
-  background-color: #3A3F4B;
+  background-color: var(--quebracho-border);
 }
 
 /* ── Monaco Editor Container ────────────────────────────────────────── */
@@ -175,7 +231,7 @@ body {
 
 /* ── Terminal styling overrides ─────────────────────────────────────── */
 .xterm-viewport {
-  background-color: #1F2025 !important;
+  background-color: var(--quebracho-terminal) !important;
 }
 .xterm .xterm-viewport::-webkit-scrollbar {
   width: 10px;
@@ -187,19 +243,42 @@ body {
 
 /* ── Dropdown ───────────────────────────────────────────────────────── */
 .dropdown-menu {
-  background-color: #24282E;
-  border: 1px solid #3A3F4B;
+  background-color: var(--quebracho-sidebar);
+  border: 1px solid var(--quebracho-border);
   border-radius: 6px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
 }
 
 /* ── Generic input ──────────────────────────────────────────────────── */
 .quebracho-input {
-  background-color: rgb(var(--quebracho-input));
-  border: 1px solid rgb(var(--quebracho-accent));
-  color: rgb(var(--quebracho-text));
+  background-color: var(--quebracho-input);
+  border: 1px solid var(--quebracho-accent);
+  color: var(--quebracho-text);
   outline: none;
   padding: 4px 8px;
   border-radius: 4px;
   font-size: 13px;
+}
+
+/* ── Find / Replace decorations ─────────────────────────────────────── */
+.qb-find-match {
+  background-color: rgba(74, 219, 148, 0.15);
+  border-radius: 2px;
+}
+
+.qb-find-active-match {
+  background-color: rgba(74, 219, 148, 0.35);
+  outline: 1px solid rgba(74, 219, 148, 0.8);
+  border-radius: 2px;
+}
+
+html[data-color-theme='aura-dark'] .qb-find-match {
+  background-color: rgba(158, 124, 255, 0.15);
+  border-radius: 2px;
+}
+
+html[data-color-theme='aura-dark'] .qb-find-active-match {
+  background-color: rgba(158, 124, 255, 0.35);
+  outline: 1px solid rgba(158, 124, 255, 0.8);
+  border-radius: 2px;
 }

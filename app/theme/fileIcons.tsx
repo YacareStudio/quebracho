@@ -95,7 +95,7 @@ export function ExplorerNodeIcon({
   fileName: string;
   expanded: boolean;
   active: boolean;
-}): JSX.Element {
+}): React.ReactElement {
   if (theme === 'classic') {
     if (type === 'directory') {
       const FolderCmp = expanded ? FolderOpen : Folder;

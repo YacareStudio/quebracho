@@ -117,8 +117,8 @@ export default function TitleBar() {
   const workspacePath = useStore((s) => s.workspacePath);
   const openFolder = useStore((s) => s.openFolder);
   const openFilePath = useStore((s) => s.openFilePath);
-  const closeWorkspace = useStore((s) => s.closeWorkspace);
-  const closeTab = useStore((s) => s.closeTab);
+  const closeWorkspace = useStore((s) => s.promptCloseWorkspace);
+  const closeTab = useStore((s) => s.promptCloseTab);
   const activeTabId = useStore((s) => s.activeTabId);
   const openTabs = useStore((s) => s.openTabs);
   const saveFile = useStore((s) => s.saveFile);
@@ -176,7 +176,7 @@ export default function TitleBar() {
 
   const handleMinimize = () => window.forgeAPI?.minimize();
   const handleMaximize = () => window.forgeAPI?.maximize();
-  const handleClose = () => window.forgeAPI?.close();
+  const handleClose = () => window.forgeAPI?.requestClose();
 
   const emitEditorCommand = (command: EditorMenuCommand) => {
     window.dispatchEvent(new CustomEvent('quebracho:editor-command', { detail: { command } }));
@@ -274,7 +274,7 @@ export default function TitleBar() {
       disabled: !activeTabId,
       onClick: () => {
         if (!activeTabId) return;
-        closeTab(activeTabId);
+        void closeTab(activeTabId);
       },
     },
     {
@@ -302,7 +302,7 @@ export default function TitleBar() {
     {
       id: 'exit',
       label: t(uiLanguage, 'titleBar.fileExit'),
-      onClick: () => window.forgeAPI?.close(),
+      onClick: () => window.forgeAPI?.requestClose(),
     },
   ], [activeTabId, closeTab, closeWorkspace, openFilePath, openFolder, openTabs, saveAllFiles, saveFile, uiLanguage, workspacePath]);
 
@@ -345,8 +345,7 @@ export default function TitleBar() {
     { id: 'show-explorer', label: t(uiLanguage, 'titleBar.viewShowExplorer'), onClick: () => setSidebarPanel('explorer') },
     { id: 'show-search', label: t(uiLanguage, 'titleBar.viewShowSearch'), onClick: () => setSidebarPanel('search') },
     { id: 'show-git', label: t(uiLanguage, 'titleBar.viewShowSourceControl'), onClick: () => setSidebarPanel('git') },
-    { id: 'show-debug', label: t(uiLanguage, 'titleBar.viewShowRunDebug'), onClick: () => setSidebarPanel('debug') },
-    { id: 'show-extensions', label: t(uiLanguage, 'titleBar.viewShowExtensions'), onClick: () => setSidebarPanel('extensions') },
+    { id: 'show-database', label: t(uiLanguage, 'titleBar.viewShowDatabase'), onClick: () => setSidebarPanel('database') },
     { id: 'view-divider-2', divider: true },
     { id: 'show-terminal', label: t(uiLanguage, 'titleBar.viewShowTerminal'), onClick: () => setBottomTab('terminal') },
     { id: 'show-problems', label: t(uiLanguage, 'titleBar.viewShowProblems'), onClick: () => setBottomTab('problems') },
@@ -584,7 +583,7 @@ export default function TitleBar() {
   }, [activeMenuItemId, menuMapWithMnemonics, mnemonicMode, openMenu, openSubmenuId, topMenuEntries]);
 
   const renderMenuItems = (items: MenuItemWithMnemonic[], parentId: string) => (
-    <div className="dropdown-menu min-w-[260px] py-1">
+    <div className="dropdown-menu min-w-65 pt-1 pb-1">
       {items.map((item) => {
         if (item.divider) {
           return <div key={item.id} className="h-px my-1 bg-quebracho-border/60" />;
@@ -601,7 +600,7 @@ export default function TitleBar() {
         return (
           <div
             key={item.id}
-            className={`relative flex items-center justify-between px-3 py-1.5 text-[12px] ${rowClass}`}
+            className={`relative flex items-center justify-between pl-3 pr-3 pt-1 pb-1.5 text-[12px] ${rowClass}`}
             onMouseEnter={() => {
               setActiveMenuItemId(item.id);
               if (itemHasSubmenu) setOpenSubmenuId(item.id);
@@ -647,13 +646,12 @@ export default function TitleBar() {
   );
 
   return (
-    <div className="h-[32px] bg-quebracho-titlebar flex items-center justify-between select-none drag-region border-b border-quebracho-border/40 relative">
+    <div className="h-8 bg-quebracho-titlebar flex items-center justify-between select-none drag-region border-b border-quebracho-border/40 relative">
       {/* Left: Logo + App name + Menu */}
       <div className="flex items-center h-full no-drag" ref={menuRootRef}>
         {/* Logo + Quebracho */}
-        <div className="flex items-center gap-2 px-3 h-full">
-          <img src={logoUrl} alt="Quebracho" className="h-[20px] w-auto object-contain" />
-          <span className="text-[13px] font-semibold text-quebracho-accent tracking-wide">Quebracho</span>
+        <div className="flex items-center gap-2 pl-3 pr-3 h-full">
+          <img src={logoUrl} alt="Quebracho" className="h-5 w-auto object-contain" />
         </div>
 
         {/* Menu Items */}
@@ -680,10 +678,10 @@ export default function TitleBar() {
                     setActiveMenuItemId(null);
                     setMnemonicMode(false);
                   }}
-                  className={`px-3 h-full transition-colors ${
+                  className={`pl-3 pr-3 h-full transition-colors ${
                     isOpen
-                      ? 'text-quebracho-text-strong bg-white/8'
-                      : 'text-quebracho-text hover:text-quebracho-text-strong hover:bg-white/5'
+                      ? 'text-quebracho-text-strong bg-quebracho-hover'
+                      : 'text-quebracho-text hover:text-quebracho-text-strong hover:bg-quebracho-hover'
                   }`}
                 >
                   {renderMnemonicLabel(menuEntry.label, menuEntry.mnemonicIndex, mnemonicMode)}
@@ -709,13 +707,13 @@ export default function TitleBar() {
       <div className="flex items-center h-full no-drag">
         <button
           onClick={handleMinimize}
-          className="w-[46px] h-full flex items-center justify-center hover:bg-white/10 transition-colors"
+          className="w-[2.875rem] h-full flex items-center justify-center hover:bg-white/10 transition-colors"
         >
           <Minus size={16} className="text-quebracho-text" />
         </button>
         <button
           onClick={handleMaximize}
-          className="w-[46px] h-full flex items-center justify-center hover:bg-white/10 transition-colors"
+          className="w-[2.875rem] h-full flex items-center justify-center hover:bg-white/10 transition-colors"
         >
           {isMaximized ? (
             <Copy size={12} className="text-quebracho-text" />
@@ -725,7 +723,7 @@ export default function TitleBar() {
         </button>
         <button
           onClick={handleClose}
-          className="w-[46px] h-full flex items-center justify-center hover:bg-[#e81123] hover:text-white transition-colors"
+          className="w-[2.875rem] h-full flex items-center justify-center hover:bg-red-500 hover:text-white transition-colors"
         >
           <X size={16} className="text-quebracho-text" />
         </button>

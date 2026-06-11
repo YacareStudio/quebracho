@@ -10,14 +10,14 @@ import {
   Plus,
   Search,
   GitBranch,
-  Bug,
-  Blocks,
   ListTree,
   History,
   Globe,
 } from 'lucide-react';
 import { t } from '../i18n';
 import { ExplorerNodeIcon } from '../theme/fileIcons';
+import DatabasePanel from './DatabasePanel';
+import SearchPanel from './SearchPanel';
 
 // ─────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -199,13 +199,15 @@ function TreeItem({
     }
   };
 
-  // Color logic
-  let textColor = '#D0D3DA';
-  if (isDirectory && isActiveFolder) textColor = '#4ADB94';
-  else if (!isDirectory && isActiveFile) textColor = '#FFFFFF';
-
   const isRenaming = renameNodeId === node.id;
   const showInlineCreate = inlineCreate && inlineCreate.parentPath === node.path && isDirectory && isExpanded;
+
+  const itemTextClass =
+    isDirectory && isActiveFolder
+      ? 'text-quebracho-accent'
+      : !isDirectory && isActiveFile
+        ? 'text-quebracho-text-strong'
+        : 'text-quebracho-text';
 
   return (
     <>
@@ -217,26 +219,22 @@ function TreeItem({
             setSelectedPath({ path: node.path, kind: isDirectory ? 'directory' : 'file' });
             onContextMenu(e, node);
           }}
-          className="tree-item flex items-center cursor-pointer h-[24px] pr-2 transition-colors"
-          style={{
-            paddingLeft: `${depth * 14 + 8}px`,
-            color: textColor,
-            backgroundColor: isSelected ? 'rgba(74, 219, 148, 0.1)' : 'transparent',
-          }}
+          className={`tree-item flex items-center cursor-pointer h-6 pr-2 transition-colors ${itemTextClass} ${isSelected ? 'bg-quebracho-accent/10' : ''}`}
+          style={{ paddingLeft: `${depth * 14 + 8}px` }}
         >
           {isDirectory ? (
-            <span className="mr-0.5 flex-shrink-0">
+            <span className="mr-0.5 shrink-0">
               {isExpanded ? (
-                <ChevronDown size={14} style={{ color: textColor }} />
+                <ChevronDown size={14} />
               ) : (
-                <ChevronRight size={14} style={{ color: textColor }} />
+                <ChevronRight size={14} />
               )}
             </span>
           ) : (
-            <span className="w-[14px] mr-0.5 flex-shrink-0" />
+            <span className="w-3.5 mr-0.5 shrink-0" />
           )}
 
-          <span className="mr-1.5 flex-shrink-0 inline-flex items-center">
+          <span className="mr-1.5 shrink-0 inline-flex items-center">
             <ExplorerNodeIcon
               theme={fileIconTheme}
               type={isDirectory ? 'directory' : 'file'}
@@ -246,7 +244,7 @@ function TreeItem({
             />
           </span>
 
-          <span className="truncate text-[13px]" style={{ color: textColor }}>
+          <span className="truncate text-[13px]">
             {node.name}
           </span>
         </div>
@@ -363,13 +361,13 @@ function NewItemInput({
 
   return (
     <div
-      className="flex items-center h-[26px] pr-2"
+      className="flex items-center h-6.5 pr-2"
       style={{ paddingLeft: `${depth * 14 + 8}px` }}
       onMouseDown={(e) => e.stopPropagation()}
       onClick={(e) => e.stopPropagation()}
     >
-      <span className="w-[14px] mr-0.5 flex-shrink-0" />
-      <span className="mr-1.5 flex-shrink-0 inline-flex items-center">
+      <span className="w-3.5 mr-0.5 shrink-0" />
+      <span className="mr-1.5 shrink-0 inline-flex items-center">
         {type === 'folder' ? (
           <Folder size={15} className="text-quebracho-accent" />
         ) : (
@@ -447,13 +445,13 @@ function RenameInput({
 
   return (
     <div
-      className="flex items-center h-[26px] pr-2"
+      className="flex items-center h-6.5 pr-2"
       style={{ paddingLeft: `${depth * 14 + 8}px` }}
       onMouseDown={(e) => e.stopPropagation()}
       onClick={(e) => e.stopPropagation()}
     >
-      <span className="w-[14px] mr-0.5 flex-shrink-0" />
-      <span className="mr-1.5 flex-shrink-0 inline-flex items-center">
+      <span className="w-3.5 mr-0.5 shrink-0" />
+      <span className="mr-1.5 shrink-0 inline-flex items-center">
         <File size={14} className="text-quebracho-accent" />
       </span>
       <input
@@ -510,12 +508,11 @@ function AddDropdown({
   return (
     <div
       ref={ref}
-      className="dropdown-menu absolute right-2 top-9 z-30 py-1 min-w-[140px]"
+      className="dropdown-menu absolute right-2 top-9 z-30 pt-1 pb-1 min-w-35"
       onClick={(e) => e.stopPropagation()}
     >
       <button
-        className="block w-full text-left px-3 py-1.5 text-[13px] transition-colors"
-        style={{ color: hover === 'file' ? '#4ADB94' : '#D3D5DE' }}
+        className={`block w-full text-left pl-3 pr-3 pt-1 pb-1.5 text-[13px] transition-colors ${hover === 'file' ? 'text-quebracho-accent' : 'text-quebracho-text-menu'}`}
         onMouseEnter={() => setHover('file')}
         onMouseLeave={() => setHover(null)}
         onClick={() => onPick('file')}
@@ -523,8 +520,7 @@ function AddDropdown({
         {t(uiLanguage, 'explorer.newFile')}
       </button>
       <button
-        className="block w-full text-left px-3 py-1.5 text-[13px] transition-colors"
-        style={{ color: hover === 'folder' ? '#4ADB94' : '#D3D5DE' }}
+        className={`block w-full text-left pl-3 pr-3 pt-1 pb-1.5 text-[13px] transition-colors ${hover === 'folder' ? 'text-quebracho-accent' : 'text-quebracho-text-menu'}`}
         onMouseEnter={() => setHover('folder')}
         onMouseLeave={() => setHover(null)}
         onClick={() => onPick('folder')}
@@ -727,11 +723,11 @@ function ExplorerPanel() {
 
   if (!workspacePath) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center gap-3 px-4 text-quebracho-text">
+      <div className="flex-1 flex flex-col items-center justify-center gap-3 pl-4 pr-4 text-quebracho-text">
         <p className="text-sm text-center">{t(uiLanguage, 'explorer.noFolderOpened')}</p>
         <button
           onClick={() => openFolder()}
-          className="px-4 py-1.5 bg-quebracho-accent text-[#1F2025] text-sm font-semibold rounded hover:opacity-90 transition-opacity"
+          className="pl-4 pr-4 pt-1 pb-1.5 bg-quebracho-accent text-quebracho-bg text-sm font-semibold rounded hover:opacity-90 transition-opacity"
         >
           {t(uiLanguage, 'explorer.openFolder')}
         </button>
@@ -742,7 +738,7 @@ function ExplorerPanel() {
   return (
     <div className="flex flex-col h-full relative">
       {/* Top bar: folder name + add button */}
-      <div className="flex items-center justify-between h-[36px] px-3 border-b border-quebracho-border/40">
+      <div className="flex items-center justify-between h-9 pl-3 pr-3 border-b border-quebracho-border/40">
         <button
           title={workspacePath ?? undefined}
           onContextMenu={(e) => {
@@ -753,13 +749,13 @@ function ExplorerPanel() {
           className="flex items-center gap-1 text-quebracho-accent text-[13px] font-semibold uppercase tracking-wide truncate"
         >
           <span className="truncate">{folderDisplayName}</span>
-          <ChevronDown size={14} className="flex-shrink-0" />
+          <ChevronDown size={14} className="shrink-0" />
         </button>
 
         <button
           onClick={() => setDropdownOpen((v) => !v)}
           title={t(uiLanguage, 'explorer.newEllipsis')}
-          className="p-1 rounded hover:bg-white/5 transition-colors"
+          className="p-1 rounded hover:bg-quebracho-hover transition-colors"
         >
           <Plus size={16} className="text-quebracho-accent" />
         </button>
@@ -791,7 +787,7 @@ function ExplorerPanel() {
 
       {/* File Tree */}
       <div
-        className="flex-1 overflow-y-auto sidebar-scroll py-1"
+        className="flex-1 overflow-y-auto sidebar-scroll pt-1 pb-1"
         onClick={handleEmptyClick}
       >
         {fileTree.map((node) => (
@@ -853,7 +849,7 @@ function CollapsibleSection({
     <div className="border-t border-quebracho-border/40">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center gap-1 px-3 h-[28px] text-[11px] font-semibold uppercase tracking-wider text-quebracho-text hover:text-quebracho-text-strong transition-colors"
+        className="w-full flex items-center gap-1 pl-3 pr-3 h-7 text-[11px] font-semibold uppercase tracking-wider text-quebracho-text hover:text-quebracho-text-strong transition-colors"
       >
         {open ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
         <span className="ml-1 inline-flex items-center gap-1.5">
@@ -862,7 +858,7 @@ function CollapsibleSection({
         </span>
       </button>
       {open && (
-        <div className="px-3 py-2 text-[12px] text-quebracho-text/60 max-h-[140px] overflow-y-auto sidebar-scroll">
+        <div className="pl-3 pr-3 pt-2 pb-2 text-[12px] text-quebracho-text/60 max-h-35 overflow-y-auto sidebar-scroll">
           {children}
         </div>
       )}
@@ -873,7 +869,7 @@ function CollapsibleSection({
 function BottomSections() {
   const uiLanguage = useStore((s) => s.uiLanguage);
   return (
-    <div className="flex-shrink-0">
+    <div className="shrink-0">
       <CollapsibleSection title={t(uiLanguage, 'explorer.outline')} icon={<ListTree size={12} />}>
         <p className="italic">{t(uiLanguage, 'explorer.noSymbols')}</p>
       </CollapsibleSection>
@@ -906,20 +902,22 @@ export default function SideBar() {
   const uiLanguage = useStore((s) => s.uiLanguage);
 
   const renderTopArea = () => {
-    switch (activeSidebarPanel) {
-      case 'explorer':
-        return <ExplorerPanel />;
-      case 'search':
-        return <PlaceholderPanel icon={<Search size={36} />} title={t(uiLanguage, 'activity.search')} />;
-      case 'git':
-        return <PlaceholderPanel icon={<GitBranch size={36} />} title={t(uiLanguage, 'activity.sourceControl')} />;
-      case 'debug':
-        return <PlaceholderPanel icon={<Bug size={36} />} title={t(uiLanguage, 'activity.runDebug')} />;
-      case 'extensions':
-        return <PlaceholderPanel icon={<Blocks size={36} />} title={t(uiLanguage, 'activity.extensions')} />;
-      default:
-        return <ExplorerPanel />;
-    }
+    return (
+      <>
+        <div style={{ display: activeSidebarPanel === 'explorer' ? 'flex' : 'none', flexDirection: 'column', height: '100%' }}>
+          <ExplorerPanel />
+        </div>
+        <div style={{ display: activeSidebarPanel === 'search' ? 'flex' : 'none', flexDirection: 'column', height: '100%' }}>
+          <SearchPanel />
+        </div>
+        <div style={{ display: activeSidebarPanel === 'git' ? 'flex' : 'none', flexDirection: 'column', height: '100%' }}>
+          <PlaceholderPanel icon={<GitBranch size={36} />} title={t(uiLanguage, 'activity.sourceControl')} />
+        </div>
+        <div style={{ display: activeSidebarPanel === 'database' ? 'flex' : 'none', flexDirection: 'column', height: '100%' }}>
+          <DatabasePanel />
+        </div>
+      </>
+    );
   };
 
   return (

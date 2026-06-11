@@ -1,8 +1,10 @@
 pub mod agent;
 pub mod ai;
 pub mod app;
+pub mod database;
 pub mod fs;
 pub mod live_server;
 pub mod lsp;
+pub mod search;
 pub mod settings;
 pub mod terminal;

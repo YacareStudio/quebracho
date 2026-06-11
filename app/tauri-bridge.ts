@@ -1,8 +1,10 @@
 import { invoke } from '@tauri-apps/api/core';
 import { emit, listen } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import { open } from '@tauri-apps/plugin-dialog';
-import type { ForgeAPI, FsChangeEvent } from './types';
+import { open, confirm as tauriConfirm } from '@tauri-apps/plugin-dialog';
+import { useStore } from './store';
+import { t } from './i18n';
+import type { ForgeAPI, FsChangeEvent, LspPublishDiagnosticsParams } from './types';
 
 type DisposeLike = { dispose: () => void };
 
@@ -112,6 +114,24 @@ const bridge: ForgeAPI = {
     if (!isTauriRuntime) return;
     void getCurrentWindow().close();
   },
+  requestClose: async () => {
+    if (!isTauriRuntime) return;
+    const { openTabs, uiLanguage } = useStore.getState();
+    const dirtyTabs = openTabs.filter((t) => t.isUnsaved && !t.imageDataUrl);
+    if (dirtyTabs.length > 0) {
+      const message =
+        dirtyTabs.length === 1
+          ? t(uiLanguage, 'editor.confirmUnsaved', { name: dirtyTabs[0].name })
+          : t(uiLanguage, 'editor.confirmUnsavedMany', { count: dirtyTabs.length });
+      try {
+        const confirmed = await tauriConfirm(message, { title: 'Quebracho', kind: 'warning' });
+        if (!confirmed) return;
+      } catch {
+        if (!window.confirm(message)) return;
+      }
+    }
+    await getCurrentWindow().destroy();
+  },
   appInfo: () => invoke('app_info'),
   updates: {
     checkAndInstall: () => invoke('app_check_for_updates'),
@@ -119,16 +139,24 @@ const bridge: ForgeAPI = {
 
   terminalCreate: (opts) => invoke('terminal_create', opts),
   terminalWrite: (id, data) => {
-    void invoke('terminal_write', { id, data });
+    void invoke('terminal_write', { id, data }).catch((e) => {
+      console.debug('[bridge] terminalWrite failed:', e);
+    });
   },
   terminalResize: (id, cols, rows) => {
-    void invoke('terminal_resize', { id, cols, rows });
+    void invoke('terminal_resize', { id, cols, rows }).catch((e) => {
+      console.debug('[bridge] terminalResize failed:', e);
+    });
   },
   terminalKill: (id) => {
-    void invoke('terminal_kill', { id });
+    void invoke('terminal_kill', { id }).catch((e) => {
+      console.debug('[bridge] terminalKill failed:', e);
+    });
   },
   terminalSendCommand: (id, command) => {
-    void invoke('terminal_send_command', { id, command });
+    void invoke('terminal_send_command', { id, command }).catch((e) => {
+      console.debug('[bridge] terminalSendCommand failed:', e);
+    });
   },
   terminalOnData: (id, callback) => {
     let disposed = false;
@@ -327,8 +355,12 @@ const bridge: ForgeAPI = {
       void invoke('lsp_notification', { args: { method, params } });
     },
     onDiagnostics: (callback) => {
-      const unlistenPromise = listen('lsp:diagnostics', (event) => {
-        callback(event.payload as any);
+      const unlistenPromise = listen<LspPublishDiagnosticsParams>('lsp:diagnostics', (event) => {
+        const payload = event.payload;
+        if (!payload || typeof payload.uri !== 'string' || !Array.isArray(payload.diagnostics)) {
+          return;
+        }
+        callback(payload);
       });
       return {
         dispose: () => {
@@ -337,8 +369,10 @@ const bridge: ForgeAPI = {
       };
     },
     onNotification: (callback) => {
-      const unlistenPromise = listen<{ method: string; params: any }>('lsp:notification', (event) => {
-        callback(event.payload?.method ?? '', event.payload?.params);
+      const unlistenPromise = listen<{ method: string; params: unknown }>('lsp:notification', (event) => {
+        const payload = event.payload;
+        if (!payload || typeof payload.method !== 'string') return;
+        callback(payload.method, payload.params);
       });
       return {
         dispose: () => {
@@ -359,9 +393,10 @@ const bridge: ForgeAPI = {
     chatStream: (args) => invoke('ai_chat_stream', { args }),
     abortStream: (streamId) => invoke('ai_abort_stream', { streamId }),
     onStream: (streamId, callback) => {
-      const unlistenPromise = listen<{ streamId: string; event: 'delta' | 'done' | 'error'; data: any }>('ai:stream', (event) => {
-        if (event.payload?.streamId !== streamId) return;
-        callback(event.payload.event, event.payload.data);
+      const unlistenPromise = listen<{ streamId: string; event: 'delta' | 'done' | 'error'; data: unknown }>('ai:stream', (event) => {
+        const payload = event.payload;
+        if (!payload || payload.streamId !== streamId) return;
+        callback(payload.event, payload.data);
       });
       return {
         dispose: () => {
@@ -376,6 +411,21 @@ const bridge: ForgeAPI = {
     writeHistory: (workspacePath, messages) => invoke('forge_write_history', { workspacePath, messages }),
     ensureForgeDir: (workspacePath) => invoke('forge_ensure_forge_dir', { workspacePath }),
     hasHistory: (workspacePath) => invoke('forge_has_history', { workspacePath }),
+  },
+
+  search: {
+    workspaceSearch: (workspacePath, query, matchCase, wholeWord, useRegex) =>
+      invoke('workspace_search', { workspacePath, query, matchCase, wholeWord, useRegex }),
+    workspaceReplace: (workspacePath, query, replacement, matchCase, wholeWord, useRegex, targetPath) =>
+      invoke('workspace_replace', { workspacePath, query, replacement, matchCase, wholeWord, useRegex, targetPath }),
+  },
+
+  database: {
+    saveConnections: (connections) => invoke('db_save_connections', { connections }),
+    loadConnections: () => invoke('db_load_connections') as Promise<import('./types').DbConnection[]>,
+    listSqliteTables: (filePath) => invoke('db_list_sqlite_tables', { filePath }),
+    testConnection: (connection) => invoke('db_test_connection', { connection }),
+    executeQuery: (connection, query) => invoke('db_execute_query', { connection, query }),
   },
 
   agent: {

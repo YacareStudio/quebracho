@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import {
   TreeNode,
   Tab,
+  DbQueryResult,
   SidebarPanel,
   BottomTab,
   CursorPosition,
@@ -23,8 +24,17 @@ import {
   normalizeColorTheme,
   normalizeFileIconTheme,
 } from './theme/appearance';
+import { confirm as tauriConfirm } from '@tauri-apps/plugin-dialog';
 
 export type SelectedNodeKind = 'file' | 'directory';
+
+async function confirmDiscard(message: string): Promise<boolean> {
+  try {
+    return await tauriConfirm(message, { title: 'Quebracho', kind: 'warning' });
+  } catch {
+    return window.confirm(message);
+  }
+}
 
 export interface SelectedNode {
   path: string;
@@ -115,6 +125,9 @@ interface EditorState {
   aiPendingDiff: PendingDiff | null;
   /** Promise resolver waiting on the diff decision. */
   aiPendingDiffResolver: ((accepted: boolean) => void) | null;
+  /** Stream id of the currently-active LLM stream (set so the Stop button
+   *  can forward an abort signal to the backend). */
+  aiCurrentStreamId: string | null;
 
   // ── AI Panel actions ────────────────────────────────────────────────
   toggleAIPanel: () => void;
@@ -137,6 +150,7 @@ interface EditorState {
     diff: PendingDiff | null,
     resolver?: ((accepted: boolean) => void) | null,
   ) => void;
+  setAICurrentStreamId: (id: string | null) => void;
   /** Load conversation history from `.quebracho/history.json` of the current
    *  workspace (or the provided one). Replaces `aiMessages` and updates
    *  `aiInitDone` based on whether the file exists. */
@@ -181,12 +195,20 @@ interface EditorState {
   toggleFolder: (folderId: string) => void;
   expandFolder: (folderId: string) => void;
   openFile: (node: TreeNode) => Promise<void>;
+  openDbQueryTab: (
+    connectionId: string,
+    connectionName: string,
+    query: string,
+    result: DbQueryResult,
+  ) => void;
   closeTab: (tabId: string) => void;
+  promptCloseTab: (tabId: string) => Promise<void>;
   setActiveTab: (tabId: string) => void;
   updateTabContent: (tabId: string, content: string) => void;
   saveFile: (tabId?: string) => Promise<void>;
   saveAllFiles: () => Promise<void>;
   closeWorkspace: () => void;
+  promptCloseWorkspace: () => Promise<void>;
   toggleSidebar: () => void;
   togglePanel: () => void;
   toggleActivityBar: () => void;
@@ -303,6 +325,7 @@ export const useStore = create<EditorState>((set, get) => ({
   aiStatusText: '',
   aiPendingDiff: null,
   aiPendingDiffResolver: null,
+  aiCurrentStreamId: null,
 
   // Agent streaming initial state
   agentStreamingPaths: new Set<string>(),
@@ -405,6 +428,7 @@ export const useStore = create<EditorState>((set, get) => ({
       aiStatusText: '',
       aiPendingDiff: null,
       aiPendingDiffResolver: null,
+      aiCurrentStreamId: null,
     });
   },
   setAIStatus: (status, text) => {
@@ -414,6 +438,7 @@ export const useStore = create<EditorState>((set, get) => ({
   setAIPendingDiff: (diff, resolver) => {
     set({ aiPendingDiff: diff, aiPendingDiffResolver: resolver ?? null });
   },
+  setAICurrentStreamId: (id) => set({ aiCurrentStreamId: id }),
   setAIMessages: (messages) => set({ aiMessages: messages }),
 
   /** Load `.quebracho/history.json` from disk for the given workspace.
@@ -924,6 +949,26 @@ export const useStore = create<EditorState>((set, get) => ({
     }
   },
 
+  openDbQueryTab: (connectionId, connectionName, query, result) => {
+    const tabId = `db-query-${connectionId}-${Date.now()}`;
+    const newTab: Tab = {
+      id: tabId,
+      name: `${connectionName} — SQL`,
+      path: tabId,
+      content: query,
+      savedContent: query,
+      language: 'sql',
+      isUnsaved: false,
+      dbConnectionId: connectionId,
+      dbConnectionName: connectionName,
+      dbResult: result,
+    };
+    set((state) => ({
+      openTabs: [...state.openTabs, newTab],
+      activeTabId: newTab.id,
+    }));
+  },
+
   closeTab: (tabId: string) => {
     set((state) => {
       const idx = state.openTabs.findIndex((t) => t.id === tabId);
@@ -942,6 +987,19 @@ export const useStore = create<EditorState>((set, get) => ({
 
       return { openTabs: newTabs, activeTabId: newActiveId };
     });
+  },
+
+  promptCloseTab: async (tabId: string) => {
+    const state = get();
+    const tab = state.openTabs.find((t) => t.id === tabId);
+    // DB query tabs and image previews never prompt for unsaved changes.
+    if (tab && tab.isUnsaved && !tab.imageDataUrl && !tab.dbConnectionId) {
+      const confirmed = await confirmDiscard(
+        t(state.uiLanguage, 'editor.confirmUnsaved', { name: tab.name }),
+      );
+      if (!confirmed) return;
+    }
+    get().closeTab(tabId);
   },
 
   setActiveTab: (tabId: string) => {
@@ -1059,6 +1117,20 @@ export const useStore = create<EditorState>((set, get) => ({
       aiPendingDiff: null,
       aiPendingDiffResolver: null,
     });
+  },
+
+  promptCloseWorkspace: async () => {
+    const state = get();
+    const dirtyTabs = state.openTabs.filter((t) => t.isUnsaved && !t.imageDataUrl);
+    if (dirtyTabs.length > 0) {
+      const message =
+        dirtyTabs.length === 1
+          ? t(state.uiLanguage, 'editor.confirmUnsaved', { name: dirtyTabs[0].name })
+          : t(state.uiLanguage, 'editor.confirmUnsavedMany', { count: dirtyTabs.length });
+      const confirmed = await confirmDiscard(message);
+      if (!confirmed) return;
+    }
+    get().closeWorkspace();
   },
 
   toggleSidebar: () => {
@@ -1362,7 +1434,10 @@ export const useStore = create<EditorState>((set, get) => ({
     try {
       await window.forgeAPI.deleteItem(itemPath);
       set((state) => {
-        const newTabs = state.openTabs.filter((t) => !t.path.startsWith(itemPath));
+        const newTabs = state.openTabs.filter((t) => {
+          if (t.path === itemPath) return false;
+          return !(t.path.startsWith(itemPath + '/') || t.path.startsWith(itemPath + '\\'));
+        });
         let newActiveId = state.activeTabId;
         if (state.activeTabId && !newTabs.find((t) => t.id === state.activeTabId)) {
           newActiveId = newTabs.length > 0 ? newTabs[newTabs.length - 1].id : null;

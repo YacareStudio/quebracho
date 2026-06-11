@@ -1,5 +1,5 @@
 import { useStore } from '../store';
-import { Files, Search, GitBranch, Bug, Blocks, Settings, UserCircle, Sparkles } from 'lucide-react';
+import { Files, Search, GitBranch, Database, Settings, UserCircle, Sparkles } from 'lucide-react';
 import type { SidebarPanel } from '../types';
 import { t } from '../i18n';
 
@@ -13,8 +13,7 @@ const items: ActivityItem[] = [
   { id: 'explorer', icon: <Files size={18} />, title: 'activity.explorer' },
   { id: 'search', icon: <Search size={18} />, title: 'activity.search' },
   { id: 'git', icon: <GitBranch size={18} />, title: 'activity.sourceControl' },
-  { id: 'debug', icon: <Bug size={18} />, title: 'activity.runDebug' },
-  { id: 'extensions', icon: <Blocks size={18} />, title: 'activity.extensions' },
+  { id: 'database', icon: <Database size={18} />, title: 'activity.database' },
 ];
 
 export default function ActivityBar() {

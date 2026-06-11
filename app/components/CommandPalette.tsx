@@ -28,8 +28,7 @@ export default function CommandPalette() {
       { id: 'show-explorer', label: t(uiLanguage, 'commandPalette.viewShowExplorer'), action: () => { setSidebarPanel('explorer'); close(); } },
       { id: 'show-search', label: t(uiLanguage, 'commandPalette.viewShowSearch'), action: () => { setSidebarPanel('search'); close(); } },
       { id: 'show-git', label: t(uiLanguage, 'commandPalette.viewShowSourceControl'), action: () => { setSidebarPanel('git'); close(); } },
-      { id: 'show-debug', label: t(uiLanguage, 'commandPalette.viewShowRunDebug'), action: () => { setSidebarPanel('debug'); close(); } },
-      { id: 'show-extensions', label: t(uiLanguage, 'commandPalette.viewShowExtensions'), action: () => { setSidebarPanel('extensions'); close(); } },
+      { id: 'show-database', label: t(uiLanguage, 'commandPalette.viewShowDatabase'), action: () => { setSidebarPanel('database'); close(); } },
       { id: 'open-settings', label: t(uiLanguage, 'commandPalette.openSettings'), action: () => { setSettingsModalOpen(true); close(); } },
     ],
     [

@@ -11,6 +11,7 @@ import AIPanel from './components/AIPanel/AIPanel';
 import SettingsModal from './components/SettingsModal';
 import { t } from './i18n';
 import { applyColorThemeToDocument } from './theme/appearance';
+import { getCurrentWindow } from '@tauri-apps/api/window';
 
 // ─────────────────────────────────────────────────────────────────────────
 // Drag dividers
@@ -114,7 +115,7 @@ function VerticalDivider({
           left: '50%',
           transform: 'translateX(-50%)',
           width: 2,
-          background: active ? '#4ADB94' : 'transparent',
+          background: active ? 'var(--quebracho-accent)' : 'transparent',
           transition: 'background 0.12s ease',
           pointerEvents: 'none',
         }}
@@ -194,7 +195,7 @@ function HorizontalDivider({
           top: '50%',
           transform: 'translateY(-50%)',
           height: 2,
-          background: active ? '#4ADB94' : 'transparent',
+          background: active ? 'var(--quebracho-accent)' : 'transparent',
           transition: 'background 0.12s ease',
           pointerEvents: 'none',
         }}
@@ -229,6 +230,8 @@ export default function App() {
   const colorTheme = useStore((s) => s.colorTheme);
   const refreshLiveServerStatus = useStore((s) => s.refreshLiveServerStatus);
   const _setLiveServerStatus = useStore((s) => s._setLiveServerStatus);
+  const openTabs = useStore((s) => s.openTabs);
+  const uiLanguage = useStore((s) => s.uiLanguage);
 
   // Ref to the editor+terminal container so we can clamp the terminal height
   // against the actually-available vertical space when dragging.
@@ -242,11 +245,19 @@ export default function App() {
     return unsubscribe;
   }, [subscribeToFsChanges]);
 
-  // Disable the native WebView/browser context menu across the app.
+  // Disable the native WebView/browser context menu across the app, but keep
+  // it enabled for editable elements (inputs, textareas, Monaco, contenteditable)
+  // so users can access Copy/Cut/Paste through right-click.
   // Custom React `onContextMenu` handlers still run, so components like the
   // sidebar can keep rendering their own contextual menus.
   useEffect(() => {
     const handleContextMenu = (event: MouseEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (
+        target?.closest('input, textarea, [contenteditable="true"], [role="textbox"]')
+      ) {
+        return;
+      }
       event.preventDefault();
     };
 
@@ -359,6 +370,21 @@ export default function App() {
         setCommandPaletteOpen(!commandPaletteOpen);
         return;
       }
+      if (mod && !e.shiftKey && key === 'f') {
+        e.preventDefault();
+        window.dispatchEvent(new CustomEvent('quebracho:open-find'));
+        return;
+      }
+      if (mod && !e.shiftKey && key === 'h') {
+        e.preventDefault();
+        window.dispatchEvent(new CustomEvent('quebracho:open-replace'));
+        return;
+      }
+      if (e.altKey && e.key === 'F4') {
+        e.preventDefault();
+        window.forgeAPI?.requestClose();
+        return;
+      }
       if (e.key === 'Escape' && commandPaletteOpen) {
         setCommandPaletteOpen(false);
       }
@@ -367,6 +393,24 @@ export default function App() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [saveFile, toggleSidebar, togglePanel, setCommandPaletteOpen, commandPaletteOpen]);
+
+  // Intercept the Tauri window close request and delegate to requestClose,
+  // which checks for unsaved files and forces destroy() to avoid close-request loops.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const w = getCurrentWindow();
+    let unlisten: (() => void) | undefined;
+    const setup = async () => {
+      unlisten = await w.onCloseRequested((event) => {
+        event.preventDefault();
+        window.forgeAPI?.requestClose();
+      });
+    };
+    void setup();
+    return () => {
+      if (unlisten) unlisten();
+    };
+  }, []);
 
   // ── Sidebar drag handler ─────────────────────────────────────────────
   const handleSidebarDrag = (clientX: number) => {

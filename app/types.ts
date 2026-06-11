@@ -7,6 +7,24 @@ export interface TreeNode {
   children?: TreeNode[];
 }
 
+// ── Database ───────────────────────────────────────────────────────────
+export interface DbQueryResult {
+  columns: string[];
+  rows: (string | number | null)[][];
+}
+
+export interface DbConnection {
+  id: string;
+  name: string;
+  dbType: 'mysql' | 'postgresql' | 'sqlite' | 'sqlserver';
+  host?: string;
+  port?: number;
+  user?: string;
+  password?: string;
+  database?: string;
+  filePath?: string;
+}
+
 // ── Editor Tab ─────────────────────────────────────────────────────────
 export interface Tab {
   id: string;
@@ -21,6 +39,11 @@ export interface Tab {
   imageDataUrl?: string;
   /** File size in bytes — displayed in the image-viewer info bar. */
   fileSize?: number;
+  /** When set, the tab is a database query editor (rendered in DbQueryEditor)
+   *  rather than a Monaco text editor. */
+  dbConnectionId?: string;
+  dbConnectionName?: string;
+  dbResult?: DbQueryResult;
 }
 
 // ── Image file detection ───────────────────────────────────────────────
@@ -51,7 +74,7 @@ export function isHtmlFile(filePath: string): boolean {
 }
 
 // ── Sidebar Panel Types ────────────────────────────────────────────────
-export type SidebarPanel = 'explorer' | 'search' | 'git' | 'debug' | 'extensions';
+export type SidebarPanel = 'explorer' | 'search' | 'git' | 'database';
 
 // ── Bottom Panel Tab Types ─────────────────────────────────────────────
 export type BottomTab = 'terminal' | 'problems' | 'output' | 'debug';
@@ -152,13 +175,15 @@ export type ProviderId =
   | 'qwen'
   | 'kimi'
   | 'ollama'
-  | 'openrouter';
+  | 'openrouter'
+  | 'unsloth';
 
 export interface ProviderInfo {
   id: ProviderId;
   name: string;
   hint?: string;
   staticModels?: string[];
+  requiresAuth?: boolean;
 }
 
 export interface ChatRole {
@@ -260,6 +285,7 @@ export interface ForgeAPI {
   minimize: () => void;
   maximize: () => void;
   close: () => void;
+  requestClose: () => Promise<void>;
   // App metadata / updater
   appInfo: () => Promise<{ name: string; version: string }>;
   updates: {
@@ -380,6 +406,41 @@ export interface ForgeAPI {
     ensureForgeDir: (workspacePath: string) => Promise<boolean>;
     /** Whether `.quebracho/history.json` already exists. */
     hasHistory: (workspacePath: string) => Promise<boolean>;
+  };
+  search: {
+    workspaceSearch: (
+      workspacePath: string,
+      query: string,
+      matchCase: boolean,
+      wholeWord: boolean,
+      useRegex: boolean,
+    ) => Promise<{
+      query: string;
+      matches: { path: string; line: number; preview: string }[];
+      truncated: boolean;
+    }>;
+    workspaceReplace: (
+      workspacePath: string,
+      query: string,
+      replacement: string,
+      matchCase: boolean,
+      wholeWord: boolean,
+      useRegex: boolean,
+      targetPath?: string,
+    ) => Promise<{
+      filesModified: number;
+      replacementsCount: number;
+    }>;
+  };
+  database: {
+    saveConnections: (connections: DbConnection[]) => Promise<void>;
+    loadConnections: () => Promise<DbConnection[]>;
+    listSqliteTables: (filePath: string) => Promise<string[]>;
+    testConnection: (connection: DbConnection) => Promise<boolean>;
+    executeQuery: (
+      connection: DbConnection,
+      query: string,
+    ) => Promise<DbQueryResult>;
   };
   agent: {
     leerArchivo: (workspacePath: string, ruta: string) => Promise<{
