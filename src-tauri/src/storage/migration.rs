@@ -17,7 +17,8 @@ pub fn migrate_old_config(config_path: &Path, secrets: &dyn SecretsStore) -> Res
     let ai_keys = match obj.get("aiKeys") {
         Some(Value::Null) => {
             obj.remove("aiKeys");
-            let new_raw = serde_json::to_string_pretty(&value).map_err(|e| format!("serialize: {e}"))?;
+            let new_raw =
+                serde_json::to_string_pretty(&value).map_err(|e| format!("serialize: {e}"))?;
             std::fs::write(config_path, new_raw).map_err(|e| format!("write config: {e}"))?;
             return Ok(());
         }
@@ -66,7 +67,10 @@ mod tests {
         migrate_old_config(&config_tmp, &secrets).unwrap();
 
         assert_eq!(secrets.get("openai").unwrap(), Some("sk-test".to_string()));
-        assert_eq!(secrets.get("anthropic").unwrap(), Some("sk-ant".to_string()));
+        assert_eq!(
+            secrets.get("anthropic").unwrap(),
+            Some("sk-ant".to_string())
+        );
 
         let migrated_raw = std::fs::read_to_string(&config_tmp).unwrap();
         let migrated: Value = serde_json::from_str(&migrated_raw).unwrap();
@@ -106,7 +110,8 @@ mod tests {
     #[test]
     fn test_migrate_is_idempotent() {
         let config_tmp = std::env::temp_dir().join("quebracho-test-migrate-idempotent.json");
-        let secrets_tmp = std::env::temp_dir().join("quebracho-test-migrate-idempotent-secrets.json");
+        let secrets_tmp =
+            std::env::temp_dir().join("quebracho-test-migrate-idempotent-secrets.json");
         let _ = std::fs::remove_file(&config_tmp);
         let _ = std::fs::remove_file(&secrets_tmp);
 

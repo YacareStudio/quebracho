@@ -50,6 +50,10 @@ export class AssistantStreamRouter {
   /** In CONTENT_STR state: did the previous char start an escape sequence? */
   private inEscape = false;
 
+  /** In CONTENT_STR state: hex digits collected so far for a `\uXXXX`
+   *  escape, or null when not inside one. */
+  private unicodeHex: string | null = null;
+
   /** Buffer used in AFTER_CONTENT to scan for `</tool>`. */
   private postContent = '';
 
@@ -137,6 +141,7 @@ export class AssistantStreamRouter {
         this.writeStarted = true;
         this.state = 'CONTENT_STR';
         this.inEscape = false;
+        this.unicodeHex = null;
         this.cb.onWriteStart(this.toolRuta);
         if (this.toolJson.length > afterOpenQuote) {
           const replay = this.toolJson.slice(afterOpenQuote);
@@ -168,9 +173,25 @@ export class AssistantStreamRouter {
   private feedContent(c: string): void {
     if (!this.toolRuta) return; // shouldn't happen
 
+    if (this.unicodeHex !== null) {
+      this.unicodeHex += c;
+      if (this.unicodeHex.length === 4) {
+        const code = parseInt(this.unicodeHex, 16);
+        this.cb.onWriteChunk(
+          this.toolRuta,
+          Number.isNaN(code) ? '\\u' + this.unicodeHex : String.fromCharCode(code),
+        );
+        this.unicodeHex = null;
+      }
+      return;
+    }
     if (this.inEscape) {
-      this.cb.onWriteChunk(this.toolRuta, decodeEscape(c));
       this.inEscape = false;
+      if (c === 'u') {
+        this.unicodeHex = '';
+        return;
+      }
+      this.cb.onWriteChunk(this.toolRuta, decodeEscape(c));
       return;
     }
     if (c === '\\') {
@@ -201,6 +222,7 @@ export class AssistantStreamRouter {
     this.toolRuta = null;
     this.writeStarted = false;
     this.inEscape = false;
+    this.unicodeHex = null;
     this.postContent = '';
   }
 }
@@ -227,23 +249,28 @@ function decodeEscape(c: string): string {
     case '/':
       return '/';
     default:
-      // `\u` unicode escapes and other unknown sequences fall through
-      // as-is. They are rare for source code in practice.
+      // Unknown escape sequences fall through as-is. (`\u` is handled by
+      // the caller before reaching here.)
       return c;
   }
 }
 
 /** Decode a JSON string body (the contents between the outer quotes). */
 function decodeJsonString(s: string): string {
-  let out = '';
-  for (let i = 0; i < s.length; i++) {
-    const c = s[i];
-    if (c === '\\' && i + 1 < s.length) {
-      out += decodeEscape(s[i + 1]);
-      i++;
-    } else {
-      out += c;
+  try {
+    return JSON.parse(`"${s}"`) as string;
+  } catch {
+    // Malformed escape sequence; fall back to a best-effort manual decode.
+    let out = '';
+    for (let i = 0; i < s.length; i++) {
+      const c = s[i];
+      if (c === '\\' && i + 1 < s.length) {
+        out += decodeEscape(s[i + 1]);
+        i++;
+      } else {
+        out += c;
+      }
     }
+    return out;
   }
-  return out;
 }

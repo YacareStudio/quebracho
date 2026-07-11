@@ -1,6 +1,6 @@
-use async_trait::async_trait;
 use crate::models::{ChatMessage, ChatResponse, ModelInfo, ProviderError, StreamChunk};
 use crate::providers::Provider;
+use async_trait::async_trait;
 use futures::Stream;
 use serde_json::Value;
 
@@ -40,7 +40,11 @@ impl Provider for OpenAiCompatibleProvider {
         self.requires_auth_list
     }
 
-    async fn list_models(&self, api_key: Option<&str>, http: &reqwest::Client) -> Result<Vec<ModelInfo>, ProviderError> {
+    async fn list_models(
+        &self,
+        api_key: Option<&str>,
+        http: &reqwest::Client,
+    ) -> Result<Vec<ModelInfo>, ProviderError> {
         if self.requires_auth_list && api_key.is_none() {
             return Ok(vec![]);
         }
@@ -67,7 +71,10 @@ impl Provider for OpenAiCompatibleProvider {
                     .filter_map(|item| {
                         let id = item.get("id")?.as_str()?;
                         let mut info = ModelInfo::new(id);
-                        info.owned_by = item.get("owned_by").and_then(|v| v.as_str()).map(|s| s.to_string());
+                        info.owned_by = item
+                            .get("owned_by")
+                            .and_then(|v| v.as_str())
+                            .map(|s| s.to_string());
                         Some(info)
                     })
                     .collect::<Vec<_>>()
@@ -77,7 +84,13 @@ impl Provider for OpenAiCompatibleProvider {
         Ok(models)
     }
 
-    async fn chat_complete(&self, model: &str, api_key: &str, messages: &[ChatMessage], http: &reqwest::Client) -> Result<ChatResponse, ProviderError> {
+    async fn chat_complete(
+        &self,
+        model: &str,
+        api_key: &str,
+        messages: &[ChatMessage],
+        http: &reqwest::Client,
+    ) -> Result<ChatResponse, ProviderError> {
         let url = format!("{}/v1/chat/completions", self.base_url());
         let body_json = serde_json::json!({
             "model": model,
@@ -120,7 +133,10 @@ impl Provider for OpenAiCompatibleProvider {
         api_key: &str,
         messages: &[ChatMessage],
         http: &reqwest::Client,
-    ) -> Result<std::pin::Pin<Box<dyn Stream<Item = Result<StreamChunk, ProviderError>> + Send>>, ProviderError> {
+    ) -> Result<
+        std::pin::Pin<Box<dyn Stream<Item = Result<StreamChunk, ProviderError>> + Send>>,
+        ProviderError,
+    > {
         let url = format!("{}/v1/chat/completions", self.base_url());
         let body_json = serde_json::json!({
             "model": model,
@@ -159,22 +175,20 @@ impl Provider for OpenAiCompatibleProvider {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use wiremock::{MockServer, Mock, ResponseTemplate};
-    use wiremock::matchers::{method, path};
     use futures::StreamExt;
+    use wiremock::matchers::{method, path};
+    use wiremock::{Mock, MockServer, ResponseTemplate};
 
     #[tokio::test]
     async fn test_list_models_success() {
         let server = MockServer::start().await;
         Mock::given(method("GET"))
             .and(path("/v1/models"))
-            .respond_with(
-                ResponseTemplate::new(200).set_body_json(serde_json::json!({
-                    "data": [
-                        {"id": "gpt-4o", "owned_by": "openai"},
-                    ]
-                })),
-            )
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "data": [
+                    {"id": "gpt-4o", "owned_by": "openai"},
+                ]
+            })))
             .mount(&server)
             .await;
 
@@ -187,7 +201,10 @@ mod tests {
             requires_auth_list: true,
         };
 
-        let models = provider.list_models(Some("test-key"), &reqwest::Client::new()).await.unwrap();
+        let models = provider
+            .list_models(Some("test-key"), &reqwest::Client::new())
+            .await
+            .unwrap();
         assert_eq!(models.len(), 1);
         assert_eq!(models[0].id, "gpt-4o");
         assert_eq!(models[0].owned_by, Some("openai".to_string()));
@@ -222,8 +239,14 @@ mod tests {
             requires_auth_list: true,
         };
 
-        let messages = vec![ChatMessage { role: "user".into(), content: "hi".into() }];
-        let mut stream = provider.chat_stream("gpt-4", "key", &messages, &reqwest::Client::new()).await.unwrap();
+        let messages = vec![ChatMessage {
+            role: "user".into(),
+            content: "hi".into(),
+        }];
+        let mut stream = provider
+            .chat_stream("gpt-4", "key", &messages, &reqwest::Client::new())
+            .await
+            .unwrap();
 
         let mut chunks = vec![];
         while let Some(chunk) = stream.next().await {

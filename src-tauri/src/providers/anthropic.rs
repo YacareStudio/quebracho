@@ -1,6 +1,6 @@
-use async_trait::async_trait;
 use crate::models::{ChatMessage, ChatResponse, ModelInfo, ProviderError, StreamChunk};
 use crate::providers::Provider;
+use async_trait::async_trait;
 use futures::Stream;
 use serde_json::Value;
 
@@ -24,14 +24,65 @@ impl Provider for AnthropicProvider {
         false
     }
 
-    async fn list_models(&self, _api_key: Option<&str>, _http: &reqwest::Client) -> Result<Vec<ModelInfo>, ProviderError> {
-        Ok(vec![
-            ModelInfo::new("claude-3-5-sonnet-latest"),
-            ModelInfo::new("claude-3-5-haiku-latest"),
-        ])
+    async fn list_models(
+        &self,
+        api_key: Option<&str>,
+        http: &reqwest::Client,
+    ) -> Result<Vec<ModelInfo>, ProviderError> {
+        let fallback = vec![
+            ModelInfo::new("claude-opus-4-8"),
+            ModelInfo::new("claude-sonnet-5"),
+            ModelInfo::new("claude-sonnet-4-6"),
+            ModelInfo::new("claude-haiku-4-5"),
+        ];
+
+        // With an API key we can query the real models endpoint; without one
+        // (or on any failure) we fall back to the static list.
+        let Some(key) = api_key else {
+            return Ok(fallback);
+        };
+
+        let url = format!("{}/v1/models", self.base_url());
+        let resp = match http
+            .get(&url)
+            .header("x-api-key", key)
+            .header("anthropic-version", "2023-06-01")
+            .send()
+            .await
+        {
+            Ok(r) if r.status().is_success() => r,
+            _ => return Ok(fallback),
+        };
+
+        let body: Value = match resp.json().await {
+            Ok(v) => v,
+            Err(_) => return Ok(fallback),
+        };
+
+        let models: Vec<ModelInfo> = body
+            .get("data")
+            .and_then(|v| v.as_array())
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(|m| m.get("id").and_then(|v| v.as_str()).map(ModelInfo::new))
+                    .collect()
+            })
+            .unwrap_or_default();
+
+        if models.is_empty() {
+            Ok(fallback)
+        } else {
+            Ok(models)
+        }
     }
 
-    async fn chat_complete(&self, model: &str, api_key: &str, messages: &[ChatMessage], http: &reqwest::Client) -> Result<ChatResponse, ProviderError> {
+    async fn chat_complete(
+        &self,
+        model: &str,
+        api_key: &str,
+        messages: &[ChatMessage],
+        http: &reqwest::Client,
+    ) -> Result<ChatResponse, ProviderError> {
         let url = format!("{}/v1/messages", self.base_url());
 
         let user_messages: Vec<Value> = messages
@@ -54,7 +105,7 @@ impl Provider for AnthropicProvider {
         let mut body = serde_json::json!({
             "model": model,
             "messages": user_messages,
-            "max_tokens": 4096,
+            "max_tokens": 8192,
         });
 
         if !system_message.is_empty() {
@@ -73,7 +124,9 @@ impl Provider for AnthropicProvider {
         let body: Value = resp.json().await?;
 
         if !status.is_success() {
-            return Err(ProviderError::Http(format!("anthropic chat failed: {body}")));
+            return Err(ProviderError::Http(format!(
+                "anthropic chat failed: {body}"
+            )));
         }
 
         let content = body
@@ -97,7 +150,10 @@ impl Provider for AnthropicProvider {
         api_key: &str,
         messages: &[ChatMessage],
         http: &reqwest::Client,
-    ) -> Result<std::pin::Pin<Box<dyn Stream<Item = Result<StreamChunk, ProviderError>> + Send>>, ProviderError> {
+    ) -> Result<
+        std::pin::Pin<Box<dyn Stream<Item = Result<StreamChunk, ProviderError>> + Send>>,
+        ProviderError,
+    > {
         let url = format!("{}/v1/messages", self.base_url());
 
         let user_messages: Vec<Value> = messages
@@ -120,7 +176,7 @@ impl Provider for AnthropicProvider {
         let mut body = serde_json::json!({
             "model": model,
             "messages": user_messages,
-            "max_tokens": 4096,
+            "max_tokens": 8192,
             "stream": true,
         });
 
@@ -140,7 +196,9 @@ impl Provider for AnthropicProvider {
         let status = resp.status();
         if !status.is_success() {
             let body: Value = resp.json().await.unwrap_or_default();
-            return Err(ProviderError::Http(format!("anthropic chat_stream failed: {body}")));
+            return Err(ProviderError::Http(format!(
+                "anthropic chat_stream failed: {body}"
+            )));
         }
 
         let byte_stream = resp.bytes_stream();

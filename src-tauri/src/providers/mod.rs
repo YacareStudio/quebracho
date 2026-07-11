@@ -1,5 +1,5 @@
-use async_trait::async_trait;
 use crate::models::{ChatMessage, ChatResponse, ModelInfo, ProviderError, StreamChunk};
+use async_trait::async_trait;
 use futures::Stream;
 use std::pin::Pin;
 use std::task::{Context, Poll};
@@ -8,11 +8,25 @@ use std::task::{Context, Poll};
 pub trait Provider: Send + Sync {
     fn id(&self) -> &'static str;
     fn name(&self) -> &'static str;
-    fn hint(&self) -> Option<&'static str> { None }
+    fn hint(&self) -> Option<&'static str> {
+        None
+    }
     fn base_url(&self) -> String;
-    fn requires_auth_for_list(&self) -> bool { true }
-    async fn list_models(&self, api_key: Option<&str>, http: &reqwest::Client) -> Result<Vec<ModelInfo>, ProviderError>;
-    async fn chat_complete(&self, model: &str, api_key: &str, messages: &[ChatMessage], http: &reqwest::Client) -> Result<ChatResponse, ProviderError>;
+    fn requires_auth_for_list(&self) -> bool {
+        true
+    }
+    async fn list_models(
+        &self,
+        api_key: Option<&str>,
+        http: &reqwest::Client,
+    ) -> Result<Vec<ModelInfo>, ProviderError>;
+    async fn chat_complete(
+        &self,
+        model: &str,
+        api_key: &str,
+        messages: &[ChatMessage],
+        http: &reqwest::Client,
+    ) -> Result<ChatResponse, ProviderError>;
 
     /// Default implementation: calls `chat_complete` and emits the whole
     /// content as a single chunk. Providers that support SSE should override.
@@ -22,7 +36,10 @@ pub trait Provider: Send + Sync {
         api_key: &str,
         messages: &[ChatMessage],
         http: &reqwest::Client,
-    ) -> Result<std::pin::Pin<Box<dyn Stream<Item = Result<StreamChunk, ProviderError>> + Send>>, ProviderError> {
+    ) -> Result<
+        std::pin::Pin<Box<dyn Stream<Item = Result<StreamChunk, ProviderError>> + Send>>,
+        ProviderError,
+    > {
         let response = self.chat_complete(model, api_key, messages, http).await?;
         let chunk = StreamChunk {
             delta: response.content,
@@ -38,19 +55,19 @@ pub trait Provider: Send + Sync {
     fn set_base_url(&self, _url: String) {}
 }
 
-pub mod openai_compatible;
 pub mod anthropic;
 pub mod google;
 pub mod ollama;
+pub mod openai_compatible;
 pub mod openrouter;
 pub mod registry;
 
-pub use openai_compatible::OpenAiCompatibleProvider;
 pub use anthropic::AnthropicProvider;
 pub use google::GoogleProvider;
 pub use ollama::OllamaProvider;
+pub use openai_compatible::OpenAiCompatibleProvider;
 pub use openrouter::OpenRouterProvider;
-pub use registry::{ProviderRegistry, default_registry};
+pub use registry::{default_registry, ProviderRegistry};
 
 /// Generic SSE parser that buffers bytes, splits on double-newlines,
 /// and extracts `data: {...}` JSON payloads through the given extractor.
@@ -98,7 +115,8 @@ where
                             if let Some(text) = (this.extract)(&json) {
                                 return Poll::Ready(Some(Ok(StreamChunk {
                                     delta: text,
-                                    finish_reason: json.get("choices")
+                                    finish_reason: json
+                                        .get("choices")
                                         .and_then(|v| v.as_array())
                                         .and_then(|arr| arr.first())
                                         .and_then(|c| c.get("finish_reason"))

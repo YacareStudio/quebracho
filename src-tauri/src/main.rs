@@ -11,7 +11,7 @@ use quebracho_lib::commands::search::*;
 use quebracho_lib::commands::settings::*;
 use quebracho_lib::commands::terminal::*;
 use quebracho_lib::state::{AiState, LiveServerState, LspState, TerminalState, WorkspaceState};
-use quebracho_lib::storage::{JsonPrefsStore, build_secrets_store, migrate_old_config};
+use quebracho_lib::storage::{build_secrets_store, migrate_old_config, JsonPrefsStore};
 use quebracho_lib::utils::app_config_path;
 use std::sync::Mutex;
 use tauri::Manager;

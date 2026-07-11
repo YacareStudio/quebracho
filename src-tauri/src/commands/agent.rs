@@ -2,7 +2,9 @@ use crate::models::{
     AgentInitManifestFile, AgentInitResult, AgentListEntry, AgentListResult, AgentReadResult,
     AgentSearchMatch, AgentSearchResult, AgentSnapshotFile, AgentWriteResult,
 };
-use crate::utils::{normalize_path, read_text_file_safe, resolve_within_workspace};
+use crate::utils::{
+    is_ignored_dir_name, normalize_path, read_text_file_safe, resolve_within_workspace,
+};
 use std::fs;
 use std::path::PathBuf;
 use walkdir::WalkDir;
@@ -41,13 +43,20 @@ pub fn agent_escribir_archivo(
 }
 
 #[tauri::command]
-pub fn agent_listar_carpeta(workspace_path: String, ruta: String) -> Result<AgentListResult, String> {
+pub fn agent_listar_carpeta(
+    workspace_path: String,
+    ruta: String,
+) -> Result<AgentListResult, String> {
     let full = resolve_within_workspace(&workspace_path, &ruta)?;
     let entries = fs::read_dir(&full)
         .map_err(|e| format!("read dir failed: {e}"))?
         .filter_map(Result::ok)
         .map(|e| {
-            let kind = if e.path().is_dir() { "directory" } else { "file" };
+            let kind = if e.path().is_dir() {
+                "directory"
+            } else {
+                "file"
+            };
             AgentListEntry {
                 name: e.file_name().to_string_lossy().to_string(),
                 entry_type: kind.into(),
@@ -73,33 +82,26 @@ pub fn agent_buscar_en_proyecto(
     let workspace = PathBuf::from(&workspace_path);
     let mut matches = Vec::new();
     let mut truncated = false;
+    let needle = texto.to_lowercase();
 
-    for entry in WalkDir::new(&workspace).into_iter().filter_map(Result::ok) {
+    for entry in WalkDir::new(&workspace)
+        .into_iter()
+        .filter_entry(|e| !is_ignored_dir_name(&e.file_name().to_string_lossy()))
+        .filter_map(Result::ok)
+    {
         if matches.len() >= MAX_SEARCH_RESULTS {
             truncated = true;
             break;
         }
 
         let path = entry.path();
-        let file_name = path
-            .file_name()
-            .map(|s| s.to_string_lossy().to_string())
-            .unwrap_or_default();
-        if file_name == "node_modules"
-            || file_name == "dist"
-            || file_name == "target"
-            || file_name == ".git"
-        {
-            continue;
-        }
-
         if !path.is_file() {
             continue;
         }
 
         if let Some(content) = read_text_file_safe(path) {
             for (idx, line) in content.lines().enumerate() {
-                if line.to_lowercase().contains(&texto.to_lowercase()) {
+                if line.to_lowercase().contains(&needle) {
                     matches.push(AgentSearchMatch {
                         path: normalize_path(path),
                         line: idx + 1,
@@ -132,6 +134,7 @@ pub fn agent_init_context(workspace_path: String) -> Result<AgentInitResult, Str
     for entry in WalkDir::new(&ws)
         .max_depth(4)
         .into_iter()
+        .filter_entry(|e| !is_ignored_dir_name(&e.file_name().to_string_lossy()))
         .filter_map(Result::ok)
     {
         let p = entry.path();
@@ -145,9 +148,6 @@ pub fn agent_init_context(workspace_path: String) -> Result<AgentInitResult, Str
             .file_name()
             .map(|s| s.to_string_lossy().to_string())
             .unwrap_or_default();
-        if name == "node_modules" || name == "dist" || name == "target" || name == ".git" {
-            continue;
-        }
         tree_lines.push(format!("{}{}", prefix, name));
     }
 
@@ -194,6 +194,7 @@ pub fn agent_snapshot_folder(
     for entry in WalkDir::new(&folder)
         .max_depth(6)
         .into_iter()
+        .filter_entry(|e| !is_ignored_dir_name(&e.file_name().to_string_lossy()))
         .filter_map(Result::ok)
     {
         if out.len() >= MAX_SNAPSHOT_FILES {
@@ -227,7 +228,45 @@ pub fn agent_file_exists(workspace_path: String, ruta: String) -> Result<bool, S
 }
 
 #[tauri::command]
-pub fn agent_read_file_safe(workspace_path: String, ruta: String) -> Result<Option<String>, String> {
+pub fn agent_read_file_safe(
+    workspace_path: String,
+    ruta: String,
+) -> Result<Option<String>, String> {
     let full = resolve_within_workspace(&workspace_path, &ruta)?;
     Ok(read_text_file_safe(&full))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The project scan must prune ignored directories (`node_modules`, etc.)
+    /// entirely — not descend into them. A match that only exists inside an
+    /// ignored folder must NOT be returned.
+    #[test]
+    fn test_search_prunes_ignored_directories() {
+        let tmp = std::env::temp_dir().join("quebracho-test-search-prune");
+        let _ = fs::remove_dir_all(&tmp);
+        let nm = tmp.join("node_modules").join("dep");
+        fs::create_dir_all(&nm).unwrap();
+        fs::create_dir_all(tmp.join("src")).unwrap();
+        // Same needle inside an ignored dir and a real source file.
+        fs::write(nm.join("index.js"), "const NEEDLE_TOKEN = 1;").unwrap();
+        fs::write(tmp.join("src").join("app.ts"), "const NEEDLE_TOKEN = 2;").unwrap();
+
+        let ws = tmp.to_string_lossy().to_string();
+        let res = agent_buscar_en_proyecto(ws, "NEEDLE_TOKEN".into()).unwrap();
+
+        assert_eq!(res.matches.len(), 1, "should only match the src/ file");
+        assert!(res.matches[0]
+            .path
+            .replace('\\', "/")
+            .contains("src/app.ts"));
+        assert!(
+            !res.matches.iter().any(|m| m.path.contains("node_modules")),
+            "node_modules must be pruned"
+        );
+
+        let _ = fs::remove_dir_all(&tmp);
+    }
 }

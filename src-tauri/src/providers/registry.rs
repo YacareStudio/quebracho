@@ -1,5 +1,8 @@
 use crate::models::ProviderInfo;
-use crate::providers::{AnthropicProvider, GoogleProvider, OllamaProvider, OpenAiCompatibleProvider, OpenRouterProvider, Provider};
+use crate::providers::{
+    AnthropicProvider, GoogleProvider, OllamaProvider, OpenAiCompatibleProvider,
+    OpenRouterProvider, Provider,
+};
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -19,15 +22,17 @@ impl ProviderRegistry {
     }
 
     pub fn list(&self) -> Vec<ProviderInfo> {
-        let mut list: Vec<ProviderInfo> = self.providers.values().map(|p| {
-            ProviderInfo {
+        let mut list: Vec<ProviderInfo> = self
+            .providers
+            .values()
+            .map(|p| ProviderInfo {
                 id: p.id().to_string(),
                 name: p.name().to_string(),
                 hint: p.hint().map(|s| s.to_string()),
                 static_models: vec![],
                 requires_auth: p.requires_auth_for_list(),
-            }
-        }).collect();
+            })
+            .collect();
         list.sort_by(|a, b| a.id.cmp(&b.id));
         list
     }
@@ -88,7 +93,9 @@ pub fn default_registry() -> ProviderRegistry {
         id: "qwen",
         name: "Qwen",
         hint: Some("OpenAI-compatible API"),
-        base_url: std::sync::Mutex::new("https://dashscope-intl.aliyuncs.com/compatible-mode".to_string()),
+        base_url: std::sync::Mutex::new(
+            "https://dashscope-intl.aliyuncs.com/compatible-mode".to_string(),
+        ),
         requires_auth_list: true,
     }));
 

@@ -33,7 +33,10 @@ impl JsonSecretsStore {
     }
 
     fn ensure_loaded(&self) -> Result<(), String> {
-        let mut loaded = self.loaded.lock().map_err(|_| "secrets loaded lock failed")?;
+        let mut loaded = self
+            .loaded
+            .lock()
+            .map_err(|_| "secrets loaded lock failed")?;
         if *loaded {
             return Ok(());
         }
@@ -64,7 +67,8 @@ impl JsonSecretsStore {
         };
         drop(cache);
 
-        let json = serde_json::to_string_pretty(&file).map_err(|e| format!("serialize secrets: {e}"))?;
+        let json =
+            serde_json::to_string_pretty(&file).map_err(|e| format!("serialize secrets: {e}"))?;
         std::fs::write(&self.path, json).map_err(|e| format!("write secrets: {e}"))?;
         Ok(())
     }
@@ -166,7 +170,8 @@ mod tests {
         for i in 0..10 {
             let s = Arc::clone(&store);
             handles.push(thread::spawn(move || {
-                s.set(&format!("provider-{i}"), &format!("key-{i}")).unwrap();
+                s.set(&format!("provider-{i}"), &format!("key-{i}"))
+                    .unwrap();
             }));
         }
 

@@ -1,6 +1,6 @@
-use async_trait::async_trait;
 use crate::models::{ChatMessage, ChatResponse, ModelInfo, ProviderError};
 use crate::providers::Provider;
+use async_trait::async_trait;
 use serde_json::Value;
 
 pub struct OpenRouterProvider;
@@ -27,14 +27,20 @@ impl Provider for OpenRouterProvider {
         false
     }
 
-    async fn list_models(&self, _api_key: Option<&str>, http: &reqwest::Client) -> Result<Vec<ModelInfo>, ProviderError> {
+    async fn list_models(
+        &self,
+        _api_key: Option<&str>,
+        http: &reqwest::Client,
+    ) -> Result<Vec<ModelInfo>, ProviderError> {
         let url = "https://openrouter.ai/api/v1/models";
         let resp = http.get(url).send().await?;
         let status = resp.status();
         let body: Value = resp.json().await?;
 
         if !status.is_success() {
-            return Err(ProviderError::Http(format!("openrouter list_models failed: {body}")));
+            return Err(ProviderError::Http(format!(
+                "openrouter list_models failed: {body}"
+            )));
         }
 
         let models = body
@@ -45,7 +51,10 @@ impl Provider for OpenRouterProvider {
                     .filter_map(|item| {
                         let id = item.get("id")?.as_str()?;
                         let mut info = ModelInfo::new(id);
-                        info.context_length = item.get("context_length").and_then(|v| v.as_u64()).map(|n| n as u32);
+                        info.context_length = item
+                            .get("context_length")
+                            .and_then(|v| v.as_u64())
+                            .map(|n| n as u32);
                         info.pricing = item.get("pricing").cloned();
                         Some(info)
                     })
@@ -56,7 +65,13 @@ impl Provider for OpenRouterProvider {
         Ok(models)
     }
 
-    async fn chat_complete(&self, model: &str, api_key: &str, messages: &[ChatMessage], http: &reqwest::Client) -> Result<ChatResponse, ProviderError> {
+    async fn chat_complete(
+        &self,
+        model: &str,
+        api_key: &str,
+        messages: &[ChatMessage],
+        http: &reqwest::Client,
+    ) -> Result<ChatResponse, ProviderError> {
         let url = format!("{}/chat/completions", self.base_url());
         let body_json = serde_json::json!({
             "model": model,
@@ -73,7 +88,9 @@ impl Provider for OpenRouterProvider {
         let body: Value = resp.json().await?;
 
         if !status.is_success() {
-            return Err(ProviderError::Http(format!("openrouter chat failed: {body}")));
+            return Err(ProviderError::Http(format!(
+                "openrouter chat failed: {body}"
+            )));
         }
 
         let content = body

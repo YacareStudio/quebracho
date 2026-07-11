@@ -2,8 +2,7 @@ use crate::models::{FsChangeEvent, TreeNode};
 use crate::state::WorkspaceState;
 use crate::storage::{JsonPrefsStore, PrefsStore};
 use crate::utils::{
-    normalize_lexical, normalize_path,
-    resolve_user_path_in_workspace,
+    is_ignored_dir_name, normalize_lexical, normalize_path, resolve_user_path_in_workspace,
 };
 use notify::{Event, RecursiveMode, Watcher};
 use std::fs;
@@ -45,7 +44,7 @@ fn read_directory_recursive(dir_path: &std::path::Path, depth: usize) -> Vec<Tre
         let path = entry.path();
         let name = entry.file_name().to_string_lossy().to_string();
 
-        if name == "node_modules" || name == "dist" || name == "target" || name == ".git" {
+        if is_ignored_dir_name(&name) {
             continue;
         }
 
@@ -60,7 +59,11 @@ fn read_directory_recursive(dir_path: &std::path::Path, depth: usize) -> Vec<Tre
             id: normalize_path(&path),
             name,
             path: normalize_path(&path),
-            node_type: if is_dir { "directory".into() } else { "file".into() },
+            node_type: if is_dir {
+                "directory".into()
+            } else {
+                "file".into()
+            },
             children,
         });
     }
@@ -78,7 +81,10 @@ pub fn read_directory(
 }
 
 #[tauri::command]
-pub fn read_file(state: State<'_, Mutex<WorkspaceState>>, file_path: String) -> Result<String, String> {
+pub fn read_file(
+    state: State<'_, Mutex<WorkspaceState>>,
+    file_path: String,
+) -> Result<String, String> {
     let safe_file = resolve_user_path_in_workspace(&state, &file_path)?;
     fs::read_to_string(&safe_file).map_err(|e| format!("Failed to read file: {e}"))
 }
@@ -138,7 +144,10 @@ pub fn write_file(
 }
 
 #[tauri::command]
-pub fn create_file(state: State<'_, Mutex<WorkspaceState>>, file_path: String) -> Result<bool, String> {
+pub fn create_file(
+    state: State<'_, Mutex<WorkspaceState>>,
+    file_path: String,
+) -> Result<bool, String> {
     let safe_file = resolve_user_path_in_workspace(&state, &file_path)?;
     if safe_file.exists() {
         return Err("File already exists".into());
@@ -158,7 +167,10 @@ pub fn create_directory(
 }
 
 #[tauri::command]
-pub fn delete_item(state: State<'_, Mutex<WorkspaceState>>, item_path: String) -> Result<bool, String> {
+pub fn delete_item(
+    state: State<'_, Mutex<WorkspaceState>>,
+    item_path: String,
+) -> Result<bool, String> {
     let p = resolve_user_path_in_workspace(&state, &item_path)?;
     if p.is_dir() {
         fs::remove_dir_all(&p).map_err(|e| format!("Failed to delete directory: {e}"))?;
@@ -246,9 +258,7 @@ pub fn remember_workspace(
 }
 
 #[tauri::command]
-pub fn get_last_workspace(
-    prefs: State<'_, JsonPrefsStore>,
-) -> Result<Option<String>, String> {
+pub fn get_last_workspace(prefs: State<'_, JsonPrefsStore>) -> Result<Option<String>, String> {
     let cfg = prefs.load()?;
     Ok(cfg.last_workspace)
 }
@@ -264,7 +274,11 @@ mod tests {
         let tmp_str = tmp.to_string_lossy().to_string();
         let r = resolve_within_workspace(&tmp_str, "src/main.rs").unwrap();
         let path = r.to_string_lossy().to_string();
-        assert!(path.ends_with("src\\main.rs") || path.ends_with("src/main.rs"), "path: {}", path);
+        assert!(
+            path.ends_with("src\\main.rs") || path.ends_with("src/main.rs"),
+            "path: {}",
+            path
+        );
     }
 
     #[test]

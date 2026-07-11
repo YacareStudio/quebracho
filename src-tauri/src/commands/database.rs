@@ -25,9 +25,9 @@ fn build_sqlx_url(conn: &DbConnection) -> Result<String, String> {
                 "mysql://{}:{}@{}:{}/{}",
                 urlencoding::encode(user),
                 urlencoding::encode(pass),
-                host,
+                urlencoding::encode(host),
                 port,
-                db
+                urlencoding::encode(db),
             ))
         }
         "postgresql" => {
@@ -40,9 +40,9 @@ fn build_sqlx_url(conn: &DbConnection) -> Result<String, String> {
                 "postgres://{}:{}@{}:{}/{}",
                 urlencoding::encode(user),
                 urlencoding::encode(pass),
-                host,
+                urlencoding::encode(host),
                 port,
-                db
+                urlencoding::encode(db),
             ))
         }
         "sqlite" => {
@@ -60,7 +60,10 @@ fn build_sqlx_url(conn: &DbConnection) -> Result<String, String> {
 pub async fn db_test_connection(conn: DbConnection) -> Result<bool, String> {
     match conn.db_type.as_str() {
         "sqlite" => {
-            let path = conn.file_path.as_deref().ok_or("sqlite file path required")?;
+            let path = conn
+                .file_path
+                .as_deref()
+                .ok_or("sqlite file path required")?;
             Ok(std::path::Path::new(path).exists())
         }
         "mysql" | "postgresql" => {
@@ -73,18 +76,13 @@ pub async fn db_test_connection(conn: DbConnection) -> Result<bool, String> {
                 Err(e) => Err(format!("connection failed: {}", e)),
             }
         }
-        "sqlserver" => {
-            test_sqlserver(&conn).await.map(|_| true)
-        }
+        "sqlserver" => test_sqlserver(&conn).await.map(|_| true),
         other => Err(format!("unsupported db type: {}", other)),
     }
 }
 
 #[tauri::command]
-pub async fn db_execute_query(
-    conn: DbConnection,
-    query: String,
-) -> Result<DbQueryResult, String> {
+pub async fn db_execute_query(conn: DbConnection, query: String) -> Result<DbQueryResult, String> {
     match conn.db_type.as_str() {
         "sqlite" => execute_sqlite_query(conn, query).await,
         "mysql" => execute_mysql_query(conn, query).await,
@@ -146,10 +144,7 @@ macro_rules! coerce_cell {
     };
 }
 
-async fn execute_mysql_query(
-    conn: DbConnection,
-    query: String,
-) -> Result<DbQueryResult, String> {
+async fn execute_mysql_query(conn: DbConnection, query: String) -> Result<DbQueryResult, String> {
     let url = build_sqlx_url(&conn)?;
     let mut connection = <sqlx::mysql::MySqlConnection as SqlxConnection>::connect(&url)
         .await
@@ -182,10 +177,7 @@ async fn execute_mysql_query(
     })
 }
 
-async fn execute_pg_query(
-    conn: DbConnection,
-    query: String,
-) -> Result<DbQueryResult, String> {
+async fn execute_pg_query(conn: DbConnection, query: String) -> Result<DbQueryResult, String> {
     let url = build_sqlx_url(&conn)?;
     let mut connection = <sqlx::postgres::PgConnection as SqlxConnection>::connect(&url)
         .await
@@ -217,11 +209,11 @@ async fn execute_pg_query(
     })
 }
 
-async fn execute_sqlite_query(
-    conn: DbConnection,
-    query: String,
-) -> Result<DbQueryResult, String> {
-    let path = conn.file_path.as_deref().ok_or("sqlite file path required")?;
+async fn execute_sqlite_query(conn: DbConnection, query: String) -> Result<DbQueryResult, String> {
+    let path = conn
+        .file_path
+        .as_deref()
+        .ok_or("sqlite file path required")?;
     let url = format!("sqlite:{}", path);
     let mut connection = <sqlx::AnyConnection as SqlxConnection>::connect(&url)
         .await
@@ -306,7 +298,8 @@ async fn execute_sqlserver_query(
     let tcp = tokio::net::TcpStream::connect(format!("{}:{}", host, port))
         .await
         .map_err(|e| format!("connect failed: {}", e))?;
-    tcp.set_nodelay(true).map_err(|e| format!("set_nodelay failed: {}", e))?;
+    tcp.set_nodelay(true)
+        .map_err(|e| format!("set_nodelay failed: {}", e))?;
 
     let mut client = Client::connect(config, tcp.compat_write())
         .await
@@ -320,7 +313,11 @@ async fn execute_sqlserver_query(
     let mut columns: Vec<String> = Vec::new();
     let mut rows: Vec<Vec<Option<String>>> = Vec::new();
 
-    for result in stream.into_first_result().await.map_err(|e| format!("result failed: {}", e))? {
+    for result in stream
+        .into_first_result()
+        .await
+        .map_err(|e| format!("result failed: {}", e))?
+    {
         if columns.is_empty() {
             for col in result.columns() {
                 columns.push(col.name().to_string());
@@ -338,10 +335,7 @@ async fn execute_sqlserver_query(
 }
 
 #[tauri::command]
-pub fn db_save_connections(
-    app: AppHandle,
-    connections: Vec<DbConnection>,
-) -> Result<(), String> {
+pub fn db_save_connections(app: AppHandle, connections: Vec<DbConnection>) -> Result<(), String> {
     let path = connections_file_path(&app)?;
     let file = DbConnectionsFile { connections };
     let json = serde_json::to_string_pretty(&file).map_err(|e| format!("serialize error: {e}"))?;
@@ -462,5 +456,49 @@ mod tests {
         assert_eq!(tables, vec!["bar".to_string(), "foo".to_string()]);
 
         let _ = std::fs::remove_file(&path);
+    }
+
+    fn make_conn(db_type: &str, host: &str, db: &str) -> DbConnection {
+        DbConnection {
+            id: "test".into(),
+            name: "test".into(),
+            db_type: db_type.into(),
+            host: Some(host.into()),
+            port: Some(if db_type == "postgresql" { 5432 } else { 3306 }),
+            user: Some("user".into()),
+            password: Some("pass".into()),
+            database: Some(db.into()),
+            file_path: None,
+        }
+    }
+
+    #[test]
+    fn test_build_sqlx_url_normal() {
+        let conn = make_conn("mysql", "localhost", "mydb");
+        let url = build_sqlx_url(&conn).unwrap();
+        assert_eq!(url, "mysql://user:pass@localhost:3306/mydb");
+    }
+
+    #[test]
+    fn test_build_sqlx_url_rejects_host_injection() {
+        // A host value containing "@evil.com/" would redirect the connection
+        // to a different server if left unencoded. After encoding @ → %40.
+        let conn = make_conn("postgresql", "trusted@evil.com", "db");
+        let url = build_sqlx_url(&conn).unwrap();
+        assert!(
+            url.contains("trusted%40evil.com"),
+            "@ in host must be percent-encoded, got: {url}"
+        );
+        assert!(
+            !url.contains("@evil.com/"),
+            "raw @ in host must not appear, got: {url}"
+        );
+    }
+
+    #[test]
+    fn test_build_sqlx_url_encodes_database() {
+        let conn = make_conn("mysql", "localhost", "my db/prod");
+        let url = build_sqlx_url(&conn).unwrap();
+        assert!(url.contains("my%20db%2Fprod"), "got: {url}");
     }
 }

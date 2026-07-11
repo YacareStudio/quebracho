@@ -7,6 +7,4 @@ pub mod utils;
 
 use once_cell::sync::Lazy;
 
-pub static HTTP_CLIENT: Lazy<reqwest::Client> = Lazy::new(|| {
-    reqwest::Client::new()
-});
+pub static HTTP_CLIENT: Lazy<reqwest::Client> = Lazy::new(reqwest::Client::new);

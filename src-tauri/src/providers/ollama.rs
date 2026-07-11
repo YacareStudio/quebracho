@@ -1,6 +1,6 @@
-use async_trait::async_trait;
 use crate::models::{ChatMessage, ChatResponse, ModelInfo, ProviderError};
 use crate::providers::Provider;
+use async_trait::async_trait;
 use serde_json::Value;
 
 pub struct OllamaProvider {
@@ -43,7 +43,11 @@ impl Provider for OllamaProvider {
         false
     }
 
-    async fn list_models(&self, _api_key: Option<&str>, http: &reqwest::Client) -> Result<Vec<ModelInfo>, ProviderError> {
+    async fn list_models(
+        &self,
+        _api_key: Option<&str>,
+        http: &reqwest::Client,
+    ) -> Result<Vec<ModelInfo>, ProviderError> {
         let url = format!("{}/api/tags", self.base_url());
         let resp = match http.get(&url).send().await {
             Ok(r) => r,
@@ -80,7 +84,13 @@ impl Provider for OllamaProvider {
         Ok(models)
     }
 
-    async fn chat_complete(&self, model: &str, _api_key: &str, messages: &[ChatMessage], http: &reqwest::Client) -> Result<ChatResponse, ProviderError> {
+    async fn chat_complete(
+        &self,
+        model: &str,
+        _api_key: &str,
+        messages: &[ChatMessage],
+        http: &reqwest::Client,
+    ) -> Result<ChatResponse, ProviderError> {
         let url = format!("{}/api/chat", self.base_url());
 
         let msgs: Vec<Value> = messages

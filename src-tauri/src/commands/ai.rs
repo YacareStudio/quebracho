@@ -4,28 +4,70 @@ use crate::state::AiState;
 use crate::storage::{JsonPrefsStore, PrefsStore, SecretsStore};
 use crate::utils::normalize_api_key;
 use crate::HTTP_CLIENT;
+use futures::StreamExt;
 use once_cell::sync::Lazy;
 use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::sync::atomic::Ordering;
 use std::sync::{Arc, Mutex};
 use tauri::{AppHandle, Emitter, State};
-use futures::StreamExt;
 
 static REGISTRY: Lazy<ProviderRegistry> = Lazy::new(default_registry);
 
 static FALLBACK_MODELS: Lazy<HashMap<&str, Vec<String>>> = Lazy::new(|| {
     let mut m = HashMap::new();
-    m.insert("openai", vec!["gpt-4o-mini".into(), "gpt-4.1-mini".into(), "gpt-4o".into()]);
-    m.insert("anthropic", vec!["claude-3-5-sonnet-latest".into(), "claude-3-5-haiku-latest".into()]);
-    m.insert("google", vec!["gemini-1.5-flash".into(), "gemini-1.5-pro".into()]);
-    m.insert("deepseek", vec!["deepseek-chat".into(), "deepseek-reasoner".into()]);
-    m.insert("minimax", vec!["MiniMax-M1".into(), "MiniMax-Text-01".into()]);
+    m.insert(
+        "openai",
+        vec![
+            "gpt-4.1".into(),
+            "gpt-4.1-mini".into(),
+            "o4-mini".into(),
+            "gpt-4o".into(),
+        ],
+    );
+    m.insert(
+        "anthropic",
+        vec![
+            "claude-opus-4-8".into(),
+            "claude-sonnet-5".into(),
+            "claude-sonnet-4-6".into(),
+            "claude-haiku-4-5".into(),
+        ],
+    );
+    m.insert(
+        "google",
+        vec![
+            "gemini-2.5-pro".into(),
+            "gemini-2.5-flash".into(),
+            "gemini-2.0-flash".into(),
+        ],
+    );
+    m.insert(
+        "deepseek",
+        vec!["deepseek-chat".into(), "deepseek-reasoner".into()],
+    );
+    m.insert(
+        "minimax",
+        vec!["MiniMax-M1".into(), "MiniMax-Text-01".into()],
+    );
     m.insert("opencode", vec!["opencode-go".into()]);
     m.insert("zen", vec!["zen-pro".into(), "zen-fast".into()]);
     m.insert("qwen", vec!["qwen-plus".into(), "qwen-max".into()]);
-    m.insert("kimi", vec!["moonshot-v1-8k".into(), "moonshot-v1-32k".into()]);
-    m.insert("ollama", vec!["llama3.2".into(), "qwen2.5-coder".into(), "deepseek-coder-v2".into(), "codellama".into(), "mistral".into(), "gemma2".into()]);
+    m.insert(
+        "kimi",
+        vec!["moonshot-v1-8k".into(), "moonshot-v1-32k".into()],
+    );
+    m.insert(
+        "ollama",
+        vec![
+            "llama3.2".into(),
+            "qwen2.5-coder".into(),
+            "deepseek-coder-v2".into(),
+            "codellama".into(),
+            "mistral".into(),
+            "gemma2".into(),
+        ],
+    );
     m.insert("openrouter", vec![]);
     m
 });
@@ -114,16 +156,21 @@ pub async fn ai_list_models(
     secrets: State<'_, Arc<dyn SecretsStore>>,
     provider: String,
 ) -> Result<Vec<String>, String> {
-    let provider_arc = REGISTRY.get(&provider)
+    let provider_arc = REGISTRY
+        .get(&provider)
         .ok_or_else(|| format!("unknown provider: {provider}"))?;
 
     let api_key = secrets.get(&provider).ok().flatten();
-    let fallback = FALLBACK_MODELS.get(provider.as_str()).cloned().unwrap_or_default();
+    let fallback = FALLBACK_MODELS
+        .get(provider.as_str())
+        .cloned()
+        .unwrap_or_default();
 
-    match provider_arc.list_models(api_key.as_deref(), &HTTP_CLIENT).await {
-        Ok(models) if !models.is_empty() => {
-            Ok(models.into_iter().map(|m| m.id).collect())
-        }
+    match provider_arc
+        .list_models(api_key.as_deref(), &HTTP_CLIENT)
+        .await
+    {
+        Ok(models) if !models.is_empty() => Ok(models.into_iter().map(|m| m.id).collect()),
         Ok(_) => Ok(fallback),
         Err(_) => Ok(fallback),
     }
@@ -140,7 +187,8 @@ pub async fn ai_chat_stream(
     {
         let mut s = ai_state.lock().map_err(|_| "ai state lock failed")?;
         s.aborted_streams.remove(&args.stream_id);
-        s.stream_cancel_flags.insert(args.stream_id.clone(), Arc::clone(&cancel_flag));
+        s.stream_cancel_flags
+            .insert(args.stream_id.clone(), Arc::clone(&cancel_flag));
     }
 
     let raw_key = secrets
@@ -153,16 +201,24 @@ pub async fn ai_chat_stream(
         return Err("stored API key is empty; please configure it again".into());
     }
 
-    let provider_arc = REGISTRY.get(&args.provider)
+    let provider_arc = REGISTRY
+        .get(&args.provider)
         .ok_or_else(|| format!("unknown provider: {}", args.provider))?;
 
-    let messages: Vec<ChatMessage> = args.messages.into_iter().map(|m| ChatMessage {
-        role: m.role,
-        content: m.content,
-    }).collect();
+    let messages: Vec<ChatMessage> = args
+        .messages
+        .into_iter()
+        .map(|m| ChatMessage {
+            role: m.role,
+            content: m.content,
+        })
+        .collect();
 
     // Use real SSE streaming; if it fails, fall back to the old fake-chunking.
-    match provider_arc.chat_stream(&args.model, &key, &messages, &HTTP_CLIENT).await {
+    match provider_arc
+        .chat_stream(&args.model, &key, &messages, &HTTP_CLIENT)
+        .await
+    {
         Ok(mut stream) => {
             while let Some(chunk_result) = stream.next().await {
                 // Check cancellation every chunk.
@@ -239,7 +295,10 @@ pub async fn ai_chat_stream(
             // FALLBACK: if SSE streaming fails, use the old fake-chunking so
             // the UI still receives something.
             eprintln!("[quebracho] chat_stream failed, falling back to fake chunking: {err}");
-            match provider_arc.chat_complete(&args.model, &key, &messages, &HTTP_CLIENT).await {
+            match provider_arc
+                .chat_complete(&args.model, &key, &messages, &HTTP_CLIENT)
+                .await
+            {
                 Ok(chat_resp) => {
                     let text = chat_resp.content;
                     let chunks: Vec<String> = if text.is_empty() {
@@ -308,7 +367,8 @@ pub async fn ai_chat_stream(
 
 #[tauri::command]
 pub fn ai_set_provider_base_url(provider: String, url: String) -> Result<bool, String> {
-    let registry = REGISTRY.get(&provider)
+    let registry = REGISTRY
+        .get(&provider)
         .ok_or_else(|| format!("unknown provider: {provider}"))?;
     let trimmed = url.trim();
     if trimmed.is_empty() {
@@ -351,7 +411,10 @@ mod url_validation_tests {
 }
 
 #[tauri::command]
-pub fn ai_abort_stream(ai_state: State<'_, Mutex<AiState>>, stream_id: String) -> Result<bool, String> {
+pub fn ai_abort_stream(
+    ai_state: State<'_, Mutex<AiState>>,
+    stream_id: String,
+) -> Result<bool, String> {
     let mut s = ai_state.lock().map_err(|_| "ai state lock failed")?;
     s.aborted_streams.insert(stream_id.clone());
     if let Some(flag) = s.stream_cancel_flags.get(&stream_id) {
@@ -368,7 +431,8 @@ pub fn forge_read_history(workspace_path: String) -> Result<Option<Vec<Value>>, 
     if !history_path.exists() {
         return Ok(None);
     }
-    let raw = std::fs::read_to_string(history_path).map_err(|e| format!("read history failed: {e}"))?;
+    let raw =
+        std::fs::read_to_string(history_path).map_err(|e| format!("read history failed: {e}"))?;
     let parsed = serde_json::from_str::<Vec<Value>>(&raw)
         .map_err(|e| format!("parse history failed: {e}"))?;
     Ok(Some(parsed))

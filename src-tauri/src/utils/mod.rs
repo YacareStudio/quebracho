@@ -5,6 +5,16 @@ use tauri::{AppHandle, Manager};
 
 pub const MAX_FILE_BYTES: usize = 1024 * 1024;
 
+/// Directory names that should never be walked into when scanning a workspace
+/// (dependency/build/VCS folders). Centralised so every traversal agrees.
+pub const IGNORED_DIR_NAMES: [&str; 4] = ["node_modules", "dist", "target", ".git"];
+
+/// Whether a path component (file or directory name) should be skipped when
+/// walking a workspace tree.
+pub fn is_ignored_dir_name(name: &str) -> bool {
+    IGNORED_DIR_NAMES.contains(&name)
+}
+
 pub fn normalize_api_key(raw: &str) -> String {
     let trimmed = raw.trim();
     if let Some(rest) = trimmed.strip_prefix("Bearer ") {
@@ -201,7 +211,11 @@ mod tests {
         let r = resolve_within_workspace(&tmp_str, "src/main.rs");
         assert!(r.is_ok());
         let path = r.unwrap().to_string_lossy().to_string();
-        assert!(path.ends_with("src\\main.rs") || path.ends_with("src/main.rs"), "path: {}", path);
+        assert!(
+            path.ends_with("src\\main.rs") || path.ends_with("src/main.rs"),
+            "path: {}",
+            path
+        );
 
         // absolute path inside workspace
         let abs = tmp.join(" Cargo.toml").to_string_lossy().to_string();

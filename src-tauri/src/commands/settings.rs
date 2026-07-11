@@ -2,18 +2,13 @@ use crate::storage::{JsonPrefsStore, PrefsStore};
 use tauri::State;
 
 #[tauri::command]
-pub fn ui_get_language(
-    prefs: State<'_, JsonPrefsStore>,
-) -> Result<Option<String>, String> {
+pub fn ui_get_language(prefs: State<'_, JsonPrefsStore>) -> Result<Option<String>, String> {
     let cfg = prefs.load()?;
     Ok(cfg.ui_language)
 }
 
 #[tauri::command]
-pub fn ui_set_language(
-    prefs: State<'_, JsonPrefsStore>,
-    language: String,
-) -> Result<bool, String> {
+pub fn ui_set_language(prefs: State<'_, JsonPrefsStore>, language: String) -> Result<bool, String> {
     let mut cfg = prefs.load()?;
     cfg.ui_language = Some(language);
     prefs.save(&cfg)?;
@@ -21,9 +16,7 @@ pub fn ui_set_language(
 }
 
 #[tauri::command]
-pub fn ui_get_terminal_shell(
-    prefs: State<'_, JsonPrefsStore>,
-) -> Result<Option<String>, String> {
+pub fn ui_get_terminal_shell(prefs: State<'_, JsonPrefsStore>) -> Result<Option<String>, String> {
     let cfg = prefs.load()?;
     Ok(cfg.terminal_shell)
 }
@@ -47,9 +40,7 @@ pub fn ui_set_terminal_shell(
 }
 
 #[tauri::command]
-pub fn ui_get_color_theme(
-    prefs: State<'_, JsonPrefsStore>,
-) -> Result<Option<String>, String> {
+pub fn ui_get_color_theme(prefs: State<'_, JsonPrefsStore>) -> Result<Option<String>, String> {
     let cfg = prefs.load()?;
     Ok(cfg.color_theme)
 }
@@ -73,9 +64,7 @@ pub fn ui_set_color_theme(
 }
 
 #[tauri::command]
-pub fn ui_get_file_icon_theme(
-    prefs: State<'_, JsonPrefsStore>,
-) -> Result<Option<String>, String> {
+pub fn ui_get_file_icon_theme(prefs: State<'_, JsonPrefsStore>) -> Result<Option<String>, String> {
     let cfg = prefs.load()?;
     Ok(cfg.file_icon_theme)
 }

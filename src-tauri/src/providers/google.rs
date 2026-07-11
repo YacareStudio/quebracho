@@ -1,6 +1,6 @@
-use async_trait::async_trait;
 use crate::models::{ChatMessage, ChatResponse, ModelInfo, ProviderError, StreamChunk};
 use crate::providers::Provider;
+use async_trait::async_trait;
 use futures::Stream;
 use serde_json::Value;
 
@@ -24,7 +24,11 @@ impl Provider for GoogleProvider {
         true
     }
 
-    async fn list_models(&self, api_key: Option<&str>, http: &reqwest::Client) -> Result<Vec<ModelInfo>, ProviderError> {
+    async fn list_models(
+        &self,
+        api_key: Option<&str>,
+        http: &reqwest::Client,
+    ) -> Result<Vec<ModelInfo>, ProviderError> {
         let key = api_key.ok_or(ProviderError::Auth)?;
         let url = format!("{}/v1beta/models?key={}", self.base_url(), key);
 
@@ -33,7 +37,9 @@ impl Provider for GoogleProvider {
         let body: Value = resp.json().await?;
 
         if !status.is_success() {
-            return Err(ProviderError::Http(format!("google list_models failed: {body}")));
+            return Err(ProviderError::Http(format!(
+                "google list_models failed: {body}"
+            )));
         }
 
         let models = body
@@ -53,8 +59,19 @@ impl Provider for GoogleProvider {
         Ok(models)
     }
 
-    async fn chat_complete(&self, model: &str, api_key: &str, messages: &[ChatMessage], http: &reqwest::Client) -> Result<ChatResponse, ProviderError> {
-        let url = format!("{}/v1beta/models/{}:generateContent?key={}", self.base_url(), model, api_key);
+    async fn chat_complete(
+        &self,
+        model: &str,
+        api_key: &str,
+        messages: &[ChatMessage],
+        http: &reqwest::Client,
+    ) -> Result<ChatResponse, ProviderError> {
+        let url = format!(
+            "{}/v1beta/models/{}:generateContent?key={}",
+            self.base_url(),
+            model,
+            api_key
+        );
 
         let contents: Vec<Value> = messages
             .iter()
@@ -105,10 +122,15 @@ impl Provider for GoogleProvider {
         api_key: &str,
         messages: &[ChatMessage],
         http: &reqwest::Client,
-    ) -> Result<std::pin::Pin<Box<dyn Stream<Item = Result<StreamChunk, ProviderError>> + Send>>, ProviderError> {
+    ) -> Result<
+        std::pin::Pin<Box<dyn Stream<Item = Result<StreamChunk, ProviderError>> + Send>>,
+        ProviderError,
+    > {
         let url = format!(
             "{}/v1beta/models/{}:streamGenerateContent?alt=sse&key={}",
-            self.base_url(), model, api_key
+            self.base_url(),
+            model,
+            api_key
         );
 
         let contents: Vec<Value> = messages
@@ -132,7 +154,9 @@ impl Provider for GoogleProvider {
         let status = resp.status();
         if !status.is_success() {
             let body: Value = resp.json().await.unwrap_or_default();
-            return Err(ProviderError::Http(format!("google chat_stream failed: {body}")));
+            return Err(ProviderError::Http(format!(
+                "google chat_stream failed: {body}"
+            )));
         }
 
         let byte_stream = resp.bytes_stream();
