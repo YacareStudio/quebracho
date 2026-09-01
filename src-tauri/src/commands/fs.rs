@@ -118,7 +118,7 @@ pub fn read_image_data_url(
     let data_url = format!(
         "data:{};base64,{}",
         mime,
-        general_purpose::STANDARD.encode(bytes.clone())
+        general_purpose::STANDARD.encode(&bytes)
     );
     let mut out = std::collections::HashMap::new();
     out.insert("dataUrl".to_string(), serde_json::Value::String(data_url));

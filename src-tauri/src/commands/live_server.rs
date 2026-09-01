@@ -1,9 +1,9 @@
 use crate::models::LiveServerStatus;
 use crate::state::{LiveServerHandle, LiveServerState};
-use crate::utils::normalize_path;
+use crate::utils::{is_path_within, normalize_lexical, normalize_path};
 use mime_guess::MimeGuess;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::Mutex;
 use std::thread;
@@ -12,6 +12,42 @@ use tauri::{AppHandle, Emitter, State};
 use tiny_http::{Method, Response, Server, StatusCode};
 
 const LIVE_SERVER_PORT: u16 = 5500;
+
+/// Translates a raw HTTP request target into a file path inside `root`.
+///
+/// Strips the query string / fragment, percent-decodes the path and rejects
+/// anything that would escape the served directory (`..`, absolute paths,
+/// Windows drive prefixes). Returns `None` when the request must be refused.
+fn resolve_request_path(root: &Path, url: &str, index_file: &str) -> Option<PathBuf> {
+    let path_part = url.split(['?', '#']).next().unwrap_or("");
+    let decoded = urlencoding::decode(path_part).ok()?;
+
+    let mut resolved = root.to_path_buf();
+    for segment in decoded.split(['/', '\\']) {
+        match segment {
+            "" | "." => continue,
+            ".." => return None,
+            _ => {}
+        }
+        // Drive letters (`c:`) and NTFS alternate data streams never belong in
+        // a served path.
+        if segment.contains(':') {
+            return None;
+        }
+        resolved.push(segment);
+    }
+
+    if resolved.as_path() == root {
+        resolved.push(index_file);
+    }
+
+    let normalized = normalize_lexical(&resolved);
+    if !is_path_within(&normalize_lexical(root), &normalized) {
+        return None;
+    }
+
+    Some(normalized)
+}
 
 fn emit_live_status(app: &AppHandle, state: &LiveServerState) {
     let payload = LiveServerStatus {
@@ -77,13 +113,13 @@ pub fn live_server_start(
                     continue;
                 }
 
-                let rel = request.url().trim_start_matches('/');
-                let target = if rel.is_empty() {
-                    html_clone.clone()
-                } else {
-                    rel.to_string()
+                let full = match resolve_request_path(&root_clone, request.url(), &html_clone) {
+                    Some(p) => p,
+                    None => {
+                        let _ = request.respond(Response::empty(StatusCode(403)));
+                        continue;
+                    }
                 };
-                let full = root_clone.join(target);
 
                 if !full.exists() || !full.is_file() {
                     let _ = request.respond(Response::empty(StatusCode(404)));
@@ -171,4 +207,52 @@ pub fn live_server_status(
         html_file: s.html_file.clone(),
         url: s.url.clone(),
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn root() -> PathBuf {
+        PathBuf::from("/srv/site")
+    }
+
+    #[test]
+    fn serves_index_for_root_request() {
+        let resolved = resolve_request_path(&root(), "/", "index.html").unwrap();
+        assert_eq!(resolved, normalize_lexical(&root().join("index.html")));
+    }
+
+    #[test]
+    fn strips_query_string_and_fragment() {
+        let resolved = resolve_request_path(&root(), "/app.css?v=3", "index.html").unwrap();
+        assert_eq!(resolved, normalize_lexical(&root().join("app.css")));
+
+        let resolved = resolve_request_path(&root(), "/?v=3", "index.html").unwrap();
+        assert_eq!(resolved, normalize_lexical(&root().join("index.html")));
+    }
+
+    #[test]
+    fn percent_decodes_the_path() {
+        let resolved = resolve_request_path(&root(), "/my%20file.css", "index.html").unwrap();
+        assert_eq!(resolved, normalize_lexical(&root().join("my file.css")));
+    }
+
+    #[test]
+    fn rejects_directory_traversal() {
+        assert!(resolve_request_path(&root(), "/../../etc/passwd", "index.html").is_none());
+        assert!(resolve_request_path(&root(), "/assets/../../secret", "index.html").is_none());
+        assert!(resolve_request_path(&root(), "/%2e%2e/secret", "index.html").is_none());
+        assert!(resolve_request_path(&root(), "/..\\secret", "index.html").is_none());
+        assert!(resolve_request_path(&root(), "/C:/Windows/win.ini", "index.html").is_none());
+    }
+
+    #[test]
+    fn keeps_nested_paths_inside_the_root() {
+        let resolved = resolve_request_path(&root(), "/assets/js/app.js", "index.html").unwrap();
+        assert_eq!(
+            resolved,
+            normalize_lexical(&root().join("assets").join("js").join("app.js"))
+        );
+    }
 }
