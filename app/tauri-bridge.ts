@@ -110,6 +110,12 @@ const bridge: ForgeAPI = {
       }
     });
   },
+  // WebKitGTK (Linux) and WKWebView (macOS) ignore `-webkit-app-region`, so
+  // the frameless window is moved through Tauri's API on every platform.
+  startDragging: () => {
+    if (!isTauriRuntime) return;
+    void getCurrentWindow().startDragging();
+  },
   close: () => {
     if (!isTauriRuntime) return;
     void getCurrentWindow().close();

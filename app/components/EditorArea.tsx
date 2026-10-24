@@ -10,6 +10,7 @@ import DbQueryEditor from './DbQueryEditor';
 import FindReplaceOverlay from './FindReplaceOverlay';
 import { t } from '../i18n';
 import { defineMonacoThemes, getMonacoThemeName } from '../theme/appearance';
+import { MONO_FONT_STACK } from '../platform';
 
 type EditorMenuCommand =
   | 'copy'
@@ -63,7 +64,7 @@ function toPascalCase(input: string): string {
 
 const editorOptions: editor.IStandaloneEditorConstructionOptions = {
   fontSize: 14,
-  fontFamily: "'Cascadia Code', 'Fira Code', 'JetBrains Mono', Consolas, 'Courier New', monospace",
+  fontFamily: MONO_FONT_STACK,
   fontLigatures: true,
   minimap: { enabled: true },
   scrollBeyondLastLine: false,

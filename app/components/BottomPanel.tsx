@@ -6,6 +6,7 @@ import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { t } from '../i18n';
 import { getXtermTheme } from '../theme/appearance';
+import { MONO_FONT_STACK, platform } from '../platform';
 
 interface PanelTab {
   id: BottomTab;
@@ -101,7 +102,7 @@ function XTermView({ visible }: { visible: boolean }) {
     initializedRef.current = true;
 
     const term = new Terminal({
-      fontFamily: "'Cascadia Code', 'Fira Code', 'JetBrains Mono', Consolas, 'Courier New', monospace",
+      fontFamily: MONO_FONT_STACK,
       fontSize: 13,
       lineHeight: 1.2,
       cursorBlink: true,
@@ -231,11 +232,19 @@ function XTermView({ visible }: { visible: boolean }) {
       }
     };
 
+    // Paste follows each OS's terminal convention: Cmd+V on macOS,
+    // Ctrl+Shift+V on Linux (plain Ctrl+V is quoted-insert in bash and
+    // visual-block in vim), Ctrl+V on Windows like Windows Terminal.
     const handlePasteKey = (e: KeyboardEvent) => {
+      const isV = e.key === 'v' || e.key === 'V';
       const isPaste =
-        (e.ctrlKey || e.metaKey) &&
+        isV &&
         !e.altKey &&
-        (e.key === 'v' || e.key === 'V');
+        (platform === 'macos'
+          ? e.metaKey
+          : platform === 'linux'
+            ? e.ctrlKey && e.shiftKey
+            : e.ctrlKey);
       if (!isPaste) return;
       e.preventDefault();
       e.stopPropagation();

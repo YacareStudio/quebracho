@@ -1,5 +1,6 @@
 use crate::models::{LspNotificationArgs, LspRequestArgs};
 use crate::state::{LspSession, LspState};
+use crate::utils::child_env;
 use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::io::{BufRead, BufReader, Read, Write};
@@ -50,7 +51,16 @@ fn lsp_read_message(reader: &mut BufReader<ChildStdout>) -> Option<Value> {
     serde_json::from_slice::<Value>(&buf).ok()
 }
 
-#[tauri::command]
+/// `file://` URI for the workspace root. Handles both `C:\dir` and `/home/dir`
+/// (a naive `file:///` + path yields `file:////home/dir` on Unix).
+fn workspace_root_uri(workspace_path: &str) -> String {
+    tauri::Url::from_directory_path(workspace_path)
+        .map(|u| u.to_string())
+        .unwrap_or_else(|_| format!("file:///{}", workspace_path.replace('\\', "/")))
+}
+
+// `async`: runs off the main thread, so a slow server can't freeze the window.
+#[tauri::command(async)]
 pub fn lsp_start(
     app: AppHandle,
     lsp_state: State<'_, Mutex<LspState>>,
@@ -58,15 +68,25 @@ pub fn lsp_start(
 ) -> Result<bool, String> {
     lsp_stop(lsp_state.clone())?;
 
-    let mut cmd = if cfg!(windows) {
-        let mut c = Command::new("npx.cmd");
-        c.arg("typescript-language-server").arg("--stdio");
-        c
+    // Prefer the workspace's own server: it matches the project's TypeScript and,
+    // unlike the `npx` wrapper, `kill()` reaches the real process on shutdown.
+    let local_bin = std::path::Path::new(&workspace_path)
+        .join("node_modules")
+        .join(".bin")
+        .join(if cfg!(windows) {
+            "typescript-language-server.cmd"
+        } else {
+            "typescript-language-server"
+        });
+    let mut cmd = if local_bin.is_file() {
+        Command::new(local_bin)
     } else {
-        let mut c = Command::new("npx");
-        c.arg("typescript-language-server").arg("--stdio");
+        let mut c = Command::new(if cfg!(windows) { "npx.cmd" } else { "npx" });
+        c.arg("typescript-language-server");
         c
     };
+    cmd.arg("--stdio");
+    child_env::configure_command(&mut cmd);
 
     cmd.current_dir(&workspace_path)
         .stdin(Stdio::piped())
@@ -129,13 +149,19 @@ pub fn lsp_start(
         s.session = Some(session);
     }
 
+    let root_uri = workspace_root_uri(&workspace_path);
+    let workspace_name = std::path::Path::new(&workspace_path)
+        .file_name()
+        .map(|n| n.to_string_lossy().to_string())
+        .unwrap_or_default();
     let _ = lsp_request(
         lsp_state.clone(),
         LspRequestArgs {
             method: "initialize".into(),
             params: json!({
               "processId": std::process::id(),
-              "rootUri": format!("file:///{}", workspace_path.replace('\\', "/")),
+              "rootUri": root_uri,
+              "workspaceFolders": [{ "uri": root_uri, "name": workspace_name }],
               "capabilities": {},
               "initializationOptions": {}
             }),
@@ -165,20 +191,25 @@ pub fn lsp_stop(lsp_state: State<'_, Mutex<LspState>>) -> Result<bool, String> {
     Ok(true)
 }
 
-#[tauri::command]
+// `async`: runs off the main thread, so a slow server can't freeze the window.
+#[tauri::command(async)]
 pub fn lsp_request(
     lsp_state: State<'_, Mutex<LspState>>,
     args: LspRequestArgs,
 ) -> Result<Value, String> {
-    let s = lsp_state.lock().map_err(|_| "lsp state lock failed")?;
-    let sess = s.session.as_ref().ok_or("lsp not started")?;
-    let id = sess.next_id.fetch_add(1, Ordering::SeqCst);
-
-    let (tx, rx) = mpsc::channel();
-    {
-        let mut p = sess.pending.lock().map_err(|_| "lsp pending lock failed")?;
-        p.insert(id, tx);
-    }
+    // Take what we need and release the state lock before waiting: holding it
+    // for the whole round-trip serialised every LSP call behind the slowest one.
+    let (id, stdin, pending, rx) = {
+        let s = lsp_state.lock().map_err(|_| "lsp state lock failed")?;
+        let sess = s.session.as_ref().ok_or("lsp not started")?;
+        let id = sess.next_id.fetch_add(1, Ordering::SeqCst);
+        let (tx, rx) = mpsc::channel();
+        sess.pending
+            .lock()
+            .map_err(|_| "lsp pending lock failed")?
+            .insert(id, tx);
+        (id, sess.stdin.clone(), sess.pending.clone(), rx)
+    };
 
     let msg = json!({
       "jsonrpc": "2.0",
@@ -186,11 +217,14 @@ pub fn lsp_request(
       "method": args.method,
       "params": args.params,
     });
-    lsp_write_message(&sess.stdin, &msg)?;
+    lsp_write_message(&stdin, &msg)?;
 
-    let response = rx
-        .recv_timeout(Duration::from_secs(12))
-        .map_err(|_| "lsp request timeout")?;
+    let response = rx.recv_timeout(Duration::from_secs(12)).map_err(|_| {
+        if let Ok(mut p) = pending.lock() {
+            p.remove(&id);
+        }
+        "lsp request timeout"
+    })?;
 
     if let Some(err) = response.get("error") {
         return Err(format!("lsp error: {err}"));
@@ -199,7 +233,8 @@ pub fn lsp_request(
     Ok(response.get("result").cloned().unwrap_or(Value::Null))
 }
 
-#[tauri::command]
+// `async`: runs off the main thread, so a slow server can't freeze the window.
+#[tauri::command(async)]
 pub fn lsp_notification(
     lsp_state: State<'_, Mutex<LspState>>,
     args: LspNotificationArgs,
@@ -213,4 +248,27 @@ pub fn lsp_notification(
     });
     lsp_write_message(&sess.stdin, &msg)?;
     Ok(true)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::workspace_root_uri;
+
+    #[cfg(unix)]
+    #[test]
+    fn root_uri_has_three_slashes_on_unix() {
+        assert_eq!(
+            workspace_root_uri("/home/user/mi proyecto"),
+            "file:///home/user/mi%20proyecto/"
+        );
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn root_uri_handles_drive_letters() {
+        assert_eq!(
+            workspace_root_uri("C:\\Users\\dev\\app"),
+            "file:///C:/Users/dev/app/"
+        );
+    }
 }

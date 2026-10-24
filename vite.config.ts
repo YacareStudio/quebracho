@@ -8,6 +8,9 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     emptyOutDir: true,
+    // Monaco is bundled locally (see app/monaco-loader.ts); its chunk and the
+    // TS worker are large by design and load from disk in the desktop app.
+    chunkSizeWarningLimit: 8000,
     rollupOptions: {
       output: {
         manualChunks(id) {

@@ -4,14 +4,14 @@ use crate::storage::{JsonPrefsStore, PrefsStore};
 use crate::utils::{
     is_ignored_dir_name, normalize_lexical, normalize_path, resolve_user_path_in_workspace,
 };
-use notify::{Event, RecursiveMode, Watcher};
+use notify::{Event, RecommendedWatcher, RecursiveMode, Watcher};
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::mpsc;
 use std::sync::Mutex;
 use std::thread;
 use std::time::Duration;
-use tauri::{AppHandle, Emitter, State};
+use tauri::{AppHandle, Emitter, Manager, State};
 
 fn read_directory_recursive(dir_path: &std::path::Path, depth: usize) -> Vec<TreeNode> {
     if depth > 10 {
@@ -23,11 +23,18 @@ fn read_directory_recursive(dir_path: &std::path::Path, depth: usize) -> Vec<Tre
         Err(_) => return vec![],
     };
 
-    let mut items: Vec<_> = entries.filter_map(Result::ok).collect();
-    items.sort_by(|a, b| {
-        let a_is_dir = a.path().is_dir();
-        let b_is_dir = b.path().is_dir();
-        match (a_is_dir, b_is_dir) {
+    // Stat each entry once (the sort comparator used to stat on every compare).
+    let mut items: Vec<_> = entries
+        .filter_map(Result::ok)
+        .map(|entry| {
+            let path = entry.path();
+            let is_dir = path.is_dir();
+            let is_symlink = entry.file_type().map(|t| t.is_symlink()).unwrap_or(false);
+            (entry, path, is_dir, is_symlink)
+        })
+        .collect();
+    items.sort_by(
+        |(a, _, a_is_dir, _), (b, _, b_is_dir, _)| match (a_is_dir, b_is_dir) {
             (true, false) => std::cmp::Ordering::Less,
             (false, true) => std::cmp::Ordering::Greater,
             _ => a
@@ -35,22 +42,25 @@ fn read_directory_recursive(dir_path: &std::path::Path, depth: usize) -> Vec<Tre
                 .to_string_lossy()
                 .to_lowercase()
                 .cmp(&b.file_name().to_string_lossy().to_lowercase()),
-        }
-    });
+        },
+    );
 
     let mut nodes = Vec::new();
 
-    for entry in items {
-        let path = entry.path();
+    for (entry, path, is_dir, is_symlink) in items {
         let name = entry.file_name().to_string_lossy().to_string();
 
         if is_ignored_dir_name(&name) {
             continue;
         }
 
-        let is_dir = path.is_dir();
-        let children = if is_dir {
+        // Symlinked directories are listed but not expanded: links pointing to
+        // an ancestor (common on Linux/macOS, e.g. virtualenv `lib64 -> lib`)
+        // would otherwise be walked again and again up to the depth limit.
+        let children = if is_dir && !is_symlink {
             Some(read_directory_recursive(&path, depth + 1))
+        } else if is_dir {
+            Some(Vec::new())
         } else {
             None
         };
@@ -71,7 +81,8 @@ fn read_directory_recursive(dir_path: &std::path::Path, depth: usize) -> Vec<Tre
     nodes
 }
 
-#[tauri::command]
+// `async`: walks the whole tree; keep it off the main (UI) thread.
+#[tauri::command(async)]
 pub fn read_directory(
     state: State<'_, Mutex<WorkspaceState>>,
     dir_path: String,
@@ -192,6 +203,55 @@ pub fn rename_item(
     Ok(true)
 }
 
+/// Whether `path` lies inside an ignored directory (`node_modules`, `target`, ...)
+/// below `root`. Build tools write thousands of files there; forwarding those
+/// events would flood the renderer with tree refreshes.
+fn is_in_ignored_dir(root: &Path, path: &Path) -> bool {
+    path.strip_prefix(root)
+        .map(|rel| {
+            rel.components()
+                .any(|c| is_ignored_dir_name(&c.as_os_str().to_string_lossy()))
+        })
+        .unwrap_or(false)
+}
+
+/// Start watching `root`.
+///
+/// On Linux, inotify needs one watch per directory and a recursive watch would
+/// also descend into `node_modules`/`target`, exhausting the per-user
+/// `max_user_watches` limit (shared with every other app). So each relevant
+/// directory is watched individually. FSEvents (macOS) and
+/// ReadDirectoryChangesW (Windows) watch a whole tree with a single handle.
+fn watch_tree(watcher: &mut RecommendedWatcher, root: &Path) -> notify::Result<()> {
+    #[cfg(target_os = "linux")]
+    {
+        watcher.watch(root, RecursiveMode::NonRecursive)?;
+        let dirs = walkdir::WalkDir::new(root)
+            .min_depth(1)
+            .follow_links(false)
+            .into_iter()
+            .filter_entry(|e| {
+                e.file_type().is_dir() && !is_ignored_dir_name(&e.file_name().to_string_lossy())
+            })
+            .flatten();
+        for dir in dirs {
+            if let Err(e) = watcher.watch(dir.path(), RecursiveMode::NonRecursive) {
+                // Out of inotify watches: keep the ones already registered
+                // rather than failing the whole workspace.
+                if matches!(e.kind, notify::ErrorKind::MaxFilesWatch) {
+                    eprintln!("watcher: inotify watch limit reached, tree partially watched");
+                    break;
+                }
+            }
+        }
+        Ok(())
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        watcher.watch(root, RecursiveMode::Recursive)
+    }
+}
+
 #[tauri::command]
 pub fn watch_workspace(
     app: AppHandle,
@@ -215,10 +275,43 @@ pub fn watch_workspace(
         }
     });
 
+    // Directories created after startup need their own watch on Linux. The watch
+    // can't be added from the notify callback (it runs on the backend's event
+    // thread, which `watch()` waits on), so new dirs are handed to this thread.
+    let (new_dir_tx, new_dir_rx) = mpsc::channel::<PathBuf>();
+    let app_for_dirs = app.clone();
+    thread::spawn(move || {
+        while let Ok(dir) = new_dir_rx.recv() {
+            let state = app_for_dirs.state::<Mutex<WorkspaceState>>();
+            let Ok(mut s) = state.lock() else { break };
+            // Ignore stragglers from a previous workspace's watcher.
+            if !s
+                .watched_path
+                .as_deref()
+                .is_some_and(|root| dir.starts_with(root))
+            {
+                continue;
+            }
+            match s.watcher.as_mut() {
+                Some(w) => {
+                    let _ = watch_tree(w, &dir);
+                }
+                None => break,
+            }
+        }
+    });
+
+    let root_for_events = watch_path.clone();
     let mut watcher = notify::recommended_watcher(move |res: Result<Event, notify::Error>| {
         if let Ok(event) = res {
             let reason = format!("{:?}", event.kind);
             if let Some(path) = event.paths.first() {
+                if is_in_ignored_dir(&root_for_events, path) {
+                    return;
+                }
+                if cfg!(target_os = "linux") && event.kind.is_create() && path.is_dir() {
+                    let _ = new_dir_tx.send(path.clone());
+                }
                 let _ = event_tx.send(FsChangeEvent {
                     reason,
                     path: normalize_path(path),
@@ -228,9 +321,7 @@ pub fn watch_workspace(
     })
     .map_err(|e| format!("watcher create failed: {e}"))?;
 
-    watcher
-        .watch(&watch_path, RecursiveMode::Recursive)
-        .map_err(|e| format!("watcher start failed: {e}"))?;
+    watch_tree(&mut watcher, &watch_path).map_err(|e| format!("watcher start failed: {e}"))?;
 
     let mut s = state.lock().map_err(|_| "workspace state lock failed")?;
     s.watched_path = Some(watch_path);
@@ -265,7 +356,24 @@ pub fn get_last_workspace(prefs: State<'_, JsonPrefsStore>) -> Result<Option<Str
 
 #[cfg(test)]
 mod tests {
+    use super::is_in_ignored_dir;
     use crate::utils::resolve_within_workspace;
+    use std::path::Path;
+
+    #[test]
+    fn test_is_in_ignored_dir() {
+        let root = Path::new("/ws");
+        assert!(is_in_ignored_dir(
+            root,
+            Path::new("/ws/node_modules/x/index.js")
+        ));
+        assert!(is_in_ignored_dir(
+            root,
+            Path::new("/ws/src-tauri/target/debug/a.o")
+        ));
+        assert!(!is_in_ignored_dir(root, Path::new("/ws/src/target.ts")));
+        assert!(!is_in_ignored_dir(root, Path::new("/ws/app/main.tsx")));
+    }
 
     #[test]
     fn test_resolve_within_workspace_relative() {

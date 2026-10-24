@@ -97,6 +97,10 @@ fn main() {
             // Without this, every Any-based connection fails at runtime.
             sqlx::any::install_default_drivers();
 
+            // Resolve the login-shell PATH early (Linux/macOS GUI launches get a
+            // minimal PATH, so `npx`/node from nvm or Homebrew would be missing).
+            quebracho_lib::utils::child_env::warm_up();
+
             let config_path = app_config_path(app.handle())?;
             let secrets_path = config_path.with_file_name("quebracho-secrets.json");
 

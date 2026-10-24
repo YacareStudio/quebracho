@@ -1,5 +1,6 @@
 use crate::models::TerminalCreateResult;
 use crate::state::{TerminalSession, TerminalState};
+use crate::utils::child_env;
 use portable_pty::{native_pty_system, CommandBuilder, PtySize};
 use serde_json::json;
 use std::io::{Read, Write};
@@ -12,6 +13,46 @@ use uuid::Uuid;
 struct ShellCandidate {
     program: String,
     args: Vec<String>,
+}
+
+/// Decodes a byte stream as UTF-8 without corrupting multi-byte characters
+/// that are split across `read()` calls (prompts with powerline glyphs, emoji,
+/// accented text). Incomplete trailing sequences are held until the next chunk.
+#[derive(Default)]
+struct Utf8StreamDecoder {
+    pending: Vec<u8>,
+}
+
+impl Utf8StreamDecoder {
+    fn decode(&mut self, chunk: &[u8]) -> String {
+        self.pending.extend_from_slice(chunk);
+        let mut out = String::new();
+        loop {
+            match std::str::from_utf8(&self.pending) {
+                Ok(s) => {
+                    out.push_str(s);
+                    self.pending.clear();
+                    return out;
+                }
+                Err(e) => {
+                    let valid = e.valid_up_to();
+                    out.push_str(&String::from_utf8_lossy(&self.pending[..valid]));
+                    match e.error_len() {
+                        // Truncated sequence at the end: wait for more bytes.
+                        None => {
+                            self.pending.drain(..valid);
+                            return out;
+                        }
+                        // Genuinely invalid bytes: replace and keep going.
+                        Some(len) => {
+                            out.push(char::REPLACEMENT_CHARACTER);
+                            self.pending.drain(..valid + len);
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 #[tauri::command]
@@ -104,25 +145,32 @@ pub fn terminal_create(
 
     #[cfg(not(windows))]
     {
+        // macOS terminals start login shells so `.zprofile` (where
+        // `brew shellenv` usually lives) is read; Linux terminals don't.
+        #[cfg(target_os = "macos")]
+        let login: &[&str] = &["-l"];
+        #[cfg(not(target_os = "macos"))]
+        let login: &[&str] = &[];
+
         match requested.as_str() {
-            "zsh" => push_candidate("zsh", &[]),
-            "bash" => push_candidate("bash", &[]),
-            "sh" => push_candidate("sh", &[]),
-            "fish" => push_candidate("fish", &[]),
+            "zsh" => push_candidate("zsh", login),
+            "bash" => push_candidate("bash", login),
+            "sh" => push_candidate("sh", login),
+            "fish" => push_candidate("fish", login),
             _ => {}
         }
 
         if let Ok(shell_env) = std::env::var("SHELL") {
             if !shell_env.trim().is_empty() {
-                push_candidate(shell_env.trim(), &[]);
+                push_candidate(shell_env.trim(), login);
             }
         }
         #[cfg(target_os = "macos")]
         {
-            push_candidate("zsh", &[]);
-            push_candidate("bash", &[]);
-            push_candidate("sh", &[]);
-            push_candidate("fish", &[]);
+            push_candidate("zsh", login);
+            push_candidate("bash", login);
+            push_candidate("sh", login);
+            push_candidate("fish", login);
         }
         #[cfg(not(target_os = "macos"))]
         {
@@ -144,6 +192,7 @@ pub fn terminal_create(
         if let Some(ref cwd) = cwd {
             cmd.cwd(cwd);
         }
+        child_env::configure_pty_command(&mut cmd);
         match pair.slave.spawn_command(cmd) {
             Ok(child) => {
                 child_opt = Some(child);
@@ -179,11 +228,15 @@ pub fn terminal_create(
     let id_for_read = id.clone();
     thread::spawn(move || {
         let mut buf = [0u8; 8192];
+        let mut decoder = Utf8StreamDecoder::default();
         loop {
             match reader.read(&mut buf) {
                 Ok(0) => break,
                 Ok(n) => {
-                    let data = String::from_utf8_lossy(&buf[..n]).to_string();
+                    let data = decoder.decode(&buf[..n]);
+                    if data.is_empty() {
+                        continue;
+                    }
                     let _ = app_for_read
                         .emit("terminal:data", json!({ "id": id_for_read, "data": data }));
                 }
@@ -286,4 +339,26 @@ pub fn terminal_kill(
         let _ = session.killer.kill();
     }
     Ok(true)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Utf8StreamDecoder;
+
+    #[test]
+    fn utf8_decoder_joins_split_characters() {
+        let bytes = "año ✓".as_bytes();
+        let mut d = Utf8StreamDecoder::default();
+        // Split inside 'ñ' (2 bytes) and inside '✓' (3 bytes).
+        let mut out = d.decode(&bytes[..2]);
+        out += &d.decode(&bytes[2..6]);
+        out += &d.decode(&bytes[6..]);
+        assert_eq!(out, "año ✓");
+    }
+
+    #[test]
+    fn utf8_decoder_replaces_invalid_bytes() {
+        let mut d = Utf8StreamDecoder::default();
+        assert_eq!(d.decode(&[b'a', 0xff, b'b']), "a\u{fffd}b");
+    }
 }

@@ -2,6 +2,7 @@ import { useStore } from '../store';
 import { t } from '../i18n';
 import { X } from 'lucide-react';
 import { colorThemeOptions, fileIconThemeOptions } from '../theme/appearance';
+import { platform } from '../platform';
 
 export default function SettingsModal() {
   const open = useStore((s) => s.settingsModalOpen);
@@ -14,13 +15,6 @@ export default function SettingsModal() {
   const setColorTheme = useStore((s) => s.setColorTheme);
   const fileIconTheme = useStore((s) => s.fileIconTheme);
   const setFileIconTheme = useStore((s) => s.setFileIconTheme);
-
-  const platform = (() => {
-    const raw = (typeof navigator !== 'undefined' ? navigator.platform : '').toLowerCase();
-    if (raw.includes('win')) return 'windows';
-    if (raw.includes('mac')) return 'macos';
-    return 'linux';
-  })();
 
   const shellOptions = (() => {
     if (platform === 'windows') {
@@ -83,7 +77,7 @@ export default function SettingsModal() {
               onChange={(e) => {
                 void setColorTheme(e.target.value as typeof colorTheme);
               }}
-              className="w-full rounded border border-quebracho-border bg-quebracho-bg px-3 py-2 text-[13px] text-quebracho-text-strong focus:outline-none focus:ring-1 focus:ring-quebracho-accent"
+              className="w-full rounded border border-quebracho-border bg-quebracho-bg pl-3 pr-8 py-2 text-[13px] text-quebracho-text-strong focus:outline-none focus:ring-1 focus:ring-quebracho-accent"
             >
               {colorThemeOptions.map((opt) => (
                 <option key={opt.value} value={opt.value}>
@@ -101,7 +95,7 @@ export default function SettingsModal() {
               onChange={(e) => {
                 void setFileIconTheme(e.target.value as typeof fileIconTheme);
               }}
-              className="w-full rounded border border-quebracho-border bg-quebracho-bg px-3 py-2 text-[13px] text-quebracho-text-strong focus:outline-none focus:ring-1 focus:ring-quebracho-accent"
+              className="w-full rounded border border-quebracho-border bg-quebracho-bg pl-3 pr-8 py-2 text-[13px] text-quebracho-text-strong focus:outline-none focus:ring-1 focus:ring-quebracho-accent"
             >
               {fileIconThemeOptions.map((opt) => (
                 <option key={opt.value} value={opt.value}>
@@ -119,7 +113,7 @@ export default function SettingsModal() {
               onChange={(e) => {
                 void setTerminalShellPreference(e.target.value);
               }}
-              className="w-full rounded border border-quebracho-border bg-quebracho-bg px-3 py-2 text-[13px] text-quebracho-text-strong focus:outline-none focus:ring-1 focus:ring-quebracho-accent"
+              className="w-full rounded border border-quebracho-border bg-quebracho-bg pl-3 pr-8 py-2 text-[13px] text-quebracho-text-strong focus:outline-none focus:ring-1 focus:ring-quebracho-accent"
             >
               {shellOptions.map((opt) => (
                 <option key={opt.value} value={opt.value}>

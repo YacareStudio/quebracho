@@ -8,7 +8,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 npm install          # install dependencies
 npm run dev          # full Tauri dev mode (starts Vite + Rust backend)
 npm run dev:web      # frontend only, no Tauri shell (http://localhost:5173)
-npm run build        # build desktop installer (NSIS only)
+npm run build        # desktop bundles for the host OS (scripts/build-desktop.mjs)
+npm run build:win    # NSIS  | build:linux → deb,rpm,appimage | build:mac → app,dmg
 npm run build:all    # build all bundle targets for the platform
 npm run build:web    # build static web output to dist/
 

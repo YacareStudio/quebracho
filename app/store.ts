@@ -25,6 +25,7 @@ import {
   normalizeFileIconTheme,
 } from './theme/appearance';
 import { confirmAction } from './confirm';
+import { platform } from './platform';
 
 export type SelectedNodeKind = 'file' | 'directory';
 
@@ -1178,11 +1179,13 @@ export const useStore = create<EditorState>((set, get) => ({
     if (!activeTerminalId) return;
     if (!window.forgeAPI?.terminalWrite) return;
 
-    // Quote the path to handle spaces, and rely on `cd` to expand
-    // backslashes correctly on Windows (PowerShell + cmd both accept
-    // quoted paths).
-    const escaped = workspacePath.replace(/"/g, '\\"');
-    const command = ` cd "${escaped}"\r`; // leading space helps bash HISTCONTROL=ignorespace
+    // Windows shells (PowerShell, cmd) take double quotes. POSIX shells
+    // need single quotes so `$`, backticks and `\` in the path aren't expanded.
+    const quoted =
+      platform === 'windows'
+        ? `"${workspacePath.replace(/"/g, '\\"')}"`
+        : `'${workspacePath.replace(/'/g, "'\\''")}'`;
+    const command = ` cd ${quoted}\r`; // leading space helps bash HISTCONTROL=ignorespace
     try {
       window.forgeAPI.terminalWrite(activeTerminalId, command);
     } catch (err) {

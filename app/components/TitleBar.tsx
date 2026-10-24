@@ -177,6 +177,15 @@ export default function TitleBar() {
   const handleMinimize = () => window.forgeAPI?.minimize();
   const handleMaximize = () => window.forgeAPI?.maximize();
   const handleClose = () => window.forgeAPI?.requestClose();
+  const handleTitleBarMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (e.button !== 0) return;
+    if ((e.target as HTMLElement).closest('.no-drag')) return;
+    if (e.detail === 2) {
+      handleMaximize();
+      return;
+    }
+    window.forgeAPI?.startDragging();
+  };
 
   const emitEditorCommand = (command: EditorMenuCommand) => {
     window.dispatchEvent(new CustomEvent('quebracho:editor-command', { detail: { command } }));
@@ -646,7 +655,10 @@ export default function TitleBar() {
   );
 
   return (
-    <div className="h-8 bg-quebracho-titlebar flex items-center justify-between select-none drag-region border-b border-quebracho-border/40 relative">
+    <div
+      className="h-8 bg-quebracho-titlebar flex items-center justify-between select-none drag-region border-b border-quebracho-border/40 relative"
+      onMouseDown={handleTitleBarMouseDown}
+    >
       {/* Left: Logo + App name + Menu */}
       <div className="flex items-center h-full no-drag" ref={menuRootRef}>
         {/* Logo + Quebracho */}

@@ -45,7 +45,8 @@ fn build_search_regex(
     Regex::new(&pattern).map_err(|e| format!("invalid regex: {}", e))
 }
 
-#[tauri::command]
+// `async`: walks the whole tree; keep it off the main (UI) thread.
+#[tauri::command(async)]
 pub fn workspace_search(
     workspace_path: String,
     query: String,
@@ -101,7 +102,8 @@ pub fn workspace_search(
     })
 }
 
-#[tauri::command]
+// `async`: walks the whole tree; keep it off the main (UI) thread.
+#[tauri::command(async)]
 pub fn workspace_replace(
     workspace_path: String,
     query: String,

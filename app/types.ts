@@ -284,6 +284,7 @@ export interface ForgeAPI {
   // Window controls
   minimize: () => void;
   maximize: () => void;
+  startDragging: () => void;
   close: () => void;
   requestClose: () => Promise<void>;
   // App metadata / updater

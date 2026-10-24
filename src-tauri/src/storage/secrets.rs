@@ -69,8 +69,33 @@ impl JsonSecretsStore {
 
         let json =
             serde_json::to_string_pretty(&file).map_err(|e| format!("serialize secrets: {e}"))?;
-        std::fs::write(&self.path, json).map_err(|e| format!("write secrets: {e}"))?;
+        write_private_file(&self.path, json.as_bytes())
+            .map_err(|e| format!("write secrets: {e}"))?;
         Ok(())
+    }
+}
+
+/// Write `bytes` so only the current user can read them. On Unix the default
+/// umask leaves new files world-readable (0644), which would expose API keys to
+/// other local accounts.
+fn write_private_file(path: &std::path::Path, bytes: &[u8]) -> std::io::Result<()> {
+    #[cfg(unix)]
+    {
+        use std::io::Write;
+        use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
+        let mut file = std::fs::OpenOptions::new()
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .mode(0o600)
+            .open(path)?;
+        // `mode` only applies on creation; tighten files written by older versions.
+        file.set_permissions(std::fs::Permissions::from_mode(0o600))?;
+        file.write_all(bytes)
+    }
+    #[cfg(not(unix))]
+    {
+        std::fs::write(path, bytes)
     }
 }
 

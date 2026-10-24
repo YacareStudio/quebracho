@@ -110,7 +110,9 @@ sudo apt install -y \
   libwebkit2gtk-4.1-dev
 ```
 
-Nota: en distros más antiguas puede ser `libwebkit2gtk-4.0-dev`.
+Nota: Tauri 2 requiere `libwebkit2gtk-4.1-dev` (Ubuntu 22.04+ / Debian 12+). La versión `4.0` ya no sirve.
+
+Si la ventana aparece en blanco con NVIDIA o en algunas sesiones Wayland, lanzar con `WEBKIT_DISABLE_DMABUF_RENDERER=1 npm run dev` (problema conocido de WebKitGTK).
 
 2. Instalar Node.js 20 LTS (NodeSource):
 
@@ -217,8 +219,14 @@ Servidor Vite en:
 ### Build desktop (instalables/bundles de Tauri)
 
 ```bash
-npm run build
+npm run build          # bundles del sistema actual (ver abajo)
+npm run build:win      # Windows: NSIS
+npm run build:linux    # Linux: .deb, .rpm y AppImage
+npm run build:mac      # macOS: .app y .dmg
+npm run build:all      # todos los targets de tauri.conf.json
 ```
+
+`npm run build` detecta el sistema operativo y elige los bundles correspondientes. Si `TAURI_SIGNING_PRIVATE_KEY` no está definida (builds locales), omite los artefactos firmados del updater para que el build no falle al final.
 
 ## Actualizaciones automáticas (updater)
 

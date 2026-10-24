@@ -350,6 +350,13 @@ export default function App() {
       const mod = e.ctrlKey || e.metaKey;
       const key = e.key.toLowerCase();
 
+      // Leave Ctrl+letter keys typed into the integrated terminal to the shell:
+      // Ctrl+B, Ctrl+F, Ctrl+H and Ctrl+S are readline/tmux/flow-control keys
+      // there. Ctrl+` and Ctrl+Shift+P still reach the app; Cmd (macOS) never
+      // conflicts with the shell.
+      const inTerminal = !!(e.target as HTMLElement | null)?.closest?.('.xterm');
+      if (inTerminal && e.ctrlKey && !e.metaKey && !e.shiftKey && key !== '`') return;
+
       if (mod && !e.shiftKey && key === 's') {
         e.preventDefault();
         saveFile();

@@ -1,3 +1,5 @@
+pub mod child_env;
+
 use crate::models::AppConfig;
 use std::fs;
 use std::path::{Path, PathBuf};
